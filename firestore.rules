@@ -5,19 +5,20 @@ service cloud.firestore {
     function userRole() { return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role : null; }
     function role(r) { return userRole() == r; }
     function admin() { return role('admin'); }
+    function validVehicle(v) { return v in ['Sedan', 'SUV', 'MPV']; }
 
     match /users/{uid} {
-      allow create: if signedIn() && request.auth.uid == uid && request.resource.data.role in ['customer', 'driver'];
+      allow create: if signedIn() && request.auth.uid == uid && request.resource.data.role in ['customer', 'driver'] && (request.resource.data.role != 'driver' || validVehicle(request.resource.data.vehicleType));
       allow read: if signedIn() && (request.auth.uid == uid || admin());
-      allow update: if signedIn() && request.auth.uid == uid && request.resource.data.role == resource.data.role;
+      allow update: if signedIn() && request.auth.uid == uid && request.resource.data.role == resource.data.role && (resource.data.role != 'driver' || validVehicle(request.resource.data.vehicleType));
       allow delete: if admin();
     }
 
     match /bookings/{id} {
-      allow create: if signedIn() && role('customer') && request.resource.data.customerUid == request.auth.uid && request.resource.data.status == 'Available';
+      allow create: if signedIn() && role('customer') && request.resource.data.customerUid == request.auth.uid && request.resource.data.status == 'Available' && validVehicle(request.resource.data.vehicleType);
       allow read: if admin() || (signedIn() && role('customer') && resource.data.customerUid == request.auth.uid) || (signedIn() && role('driver') && resource.data.status == 'Available') || (signedIn() && role('driver') && resource.data.driverUid == request.auth.uid);
       allow update: if admin()
-        || (signedIn() && role('driver') && resource.data.status == 'Available' && request.resource.data.status == 'Accepted' && request.resource.data.driverUid == request.auth.uid)
+        || (signedIn() && role('driver') && resource.data.status == 'Available' && request.resource.data.status == 'Accepted' && request.resource.data.driverUid == request.auth.uid && request.resource.data.vehicleType == resource.data.vehicleType && request.resource.data.vehicleType == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.vehicleType)
         || (signedIn() && role('driver') && resource.data.driverUid == request.auth.uid && request.resource.data.status == 'Completed');
       allow delete: if admin();
     }
