@@ -6,11 +6,30 @@ service cloud.firestore {
     function role(r) { return userRole() == r; }
     function admin() { return role('admin'); }
     function validVehicle(v) { return v in ['Sedan', 'SUV', 'MPV']; }
+    function validPlate(v) { return v is string && v.size() >= 2 && v.size() <= 20; }
+    function validPhoto(v) { return v is string && v.size() > 100 && v.size() < 300000; }
 
     match /users/{uid} {
-      allow create: if signedIn() && request.auth.uid == uid && request.resource.data.role in ['customer', 'driver'] && (request.resource.data.role != 'driver' || validVehicle(request.resource.data.vehicleType));
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.role in ['customer', 'driver']
+        && (request.resource.data.role != 'driver' || (validVehicle(request.resource.data.vehicleType) && validPlate(request.resource.data.plateNumber)));
       allow read: if signedIn() && (request.auth.uid == uid || admin());
-      allow update: if signedIn() && request.auth.uid == uid && request.resource.data.role == resource.data.role && (resource.data.role != 'driver' || validVehicle(request.resource.data.vehicleType));
+      allow update: if admin()
+        || (signedIn() && request.auth.uid == uid && resource.data.role == 'driver' && request.resource.data.role == 'driver'
+            && validVehicle(request.resource.data.vehicleType) && validPlate(request.resource.data.plateNumber)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName','vehicleType','languages','plateNumber']));
+      allow delete: if admin();
+    }
+
+    match /driverPublicProfiles/{uid} {
+      allow read: if signedIn() && (role('customer') || role('driver') || admin());
+      allow create: if signedIn() && role('driver') && request.auth.uid == uid
+        && validVehicle(request.resource.data.vehicleType) && validPlate(request.resource.data.plateNumber)
+        && validPhoto(request.resource.data.selfieDataUrl) && validPhoto(request.resource.data.carPhotoDataUrl);
+      allow update: if admin() || (signedIn() && role('driver') && request.auth.uid == uid
+        && validVehicle(request.resource.data.vehicleType) && validPlate(request.resource.data.plateNumber)
+        && validPhoto(request.resource.data.selfieDataUrl) && validPhoto(request.resource.data.carPhotoDataUrl)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName','vehicleType','plateNumber','languages','selfieDataUrl','carPhotoDataUrl','updatedAt']));
       allow delete: if admin();
     }
 
@@ -18,7 +37,11 @@ service cloud.firestore {
       allow create: if signedIn() && role('customer') && request.resource.data.customerUid == request.auth.uid && request.resource.data.status == 'Available' && validVehicle(request.resource.data.vehicleType);
       allow read: if admin() || (signedIn() && role('customer') && resource.data.customerUid == request.auth.uid) || (signedIn() && role('driver') && resource.data.status == 'Available') || (signedIn() && role('driver') && resource.data.driverUid == request.auth.uid);
       allow update: if admin()
-        || (signedIn() && role('driver') && resource.data.status == 'Available' && request.resource.data.status == 'Accepted' && request.resource.data.driverUid == request.auth.uid && request.resource.data.vehicleType == resource.data.vehicleType && request.resource.data.vehicleType == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.vehicleType)
+        || (signedIn() && role('driver') && resource.data.status == 'Available' && request.resource.data.status == 'Accepted'
+            && request.resource.data.driverUid == request.auth.uid
+            && request.resource.data.vehicleType == resource.data.vehicleType
+            && request.resource.data.vehicleType == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.vehicleType
+            && request.resource.data.driverPlateNumber == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.plateNumber)
         || (signedIn() && role('driver') && resource.data.driverUid == request.auth.uid && request.resource.data.status == 'Completed');
       allow delete: if admin();
     }
