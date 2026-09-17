@@ -4,17 +4,18 @@ import { getFirestore, collection, query, where, onSnapshot, getDoc, doc } from 
 
 let stopBookings = null;
 let refreshTimer = null;
+let firestore = null;
 const profileCache = new Map();
 
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>\'\"]/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
 }
 
-async function getProfile(db, uid) {
-  if (!uid) return null;
+async function getProfile(uid) {
+  if (!uid || !firestore) return null;
   if (profileCache.has(uid)) return profileCache.get(uid);
   try {
-    const snap = await getDoc(doc(db, 'driverPublicProfiles', uid));
+    const snap = await getDoc(doc(firestore, 'driverPublicProfiles', uid));
     const profile = snap.exists() ? snap.data() : null;
     profileCache.set(uid, profile);
     return profile;
@@ -29,7 +30,7 @@ async function enhanceCustomerCards(bookings) {
   if (!accepted.length) return;
 
   for (const booking of accepted) {
-    const profile = await getProfile(db, booking.driverUid);
+    const profile = await getProfile(booking.driverUid);
     if (!profile) continue;
 
     const cards = [...document.querySelectorAll('#customerBookings .booking')];
@@ -60,31 +61,35 @@ async function enhanceCustomerCards(bookings) {
   }
 }
 
-function watchCustomerBookings() {
-  if (stopBookings) stopBookings();
-  stopBookings = null;
-  if (!getApps().length) return;
-
+function startCustomerListener() {
+  if (!getApps().length) return false;
   const app = getApp();
   const auth = getAuth(app);
-  const db = getFirestore(app);
+  firestore = getFirestore(app);
 
   onAuthStateChanged(auth, user => {
     if (stopBookings) stopBookings();
     stopBookings = null;
+    profileCache.clear();
     if (!user) return;
 
-    const q = query(collection(db, 'bookings'), where('customerUid', '==', user.uid));
+    const q = query(collection(firestore, 'bookings'), where('customerUid', '==', user.uid));
     stopBookings = onSnapshot(q, snap => {
       const bookings = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
       clearTimeout(refreshTimer);
-      refreshTimer = setTimeout(() => enhanceCustomerCards(bookings), 100);
+      refreshTimer = setTimeout(() => enhanceCustomerCards(bookings), 150);
     }, error => console.error('Customer booking enhancement listener failed:', error));
   });
+  return true;
+}
+
+function waitForFirebase() {
+  if (startCustomerListener()) return;
+  setTimeout(waitForFirebase, 100);
 }
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', watchCustomerBookings, { once: true });
+  document.addEventListener('DOMContentLoaded', waitForFirebase, { once: true });
 } else {
-  watchCustomerBookings();
+  waitForFirebase();
 }
