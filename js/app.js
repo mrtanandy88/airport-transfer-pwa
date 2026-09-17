@@ -39,6 +39,8 @@ async function initFirebase() {
       driverProfile = null;
       bookings = [];
       schedules = [];
+      driverAvailable = [];
+      driverAccepted = [];
       if (user) {
         try {
           const snap = await fs.getDoc(fs.doc(db, 'users', user.uid));
@@ -76,6 +78,9 @@ function mergeDocs(snap) {
   return snap.docs.map(d => ({ docId: d.id, ...d.data() }));
 }
 
+let driverAvailable = [];
+let driverAccepted = [];
+
 function startCloudListeners() {
   if (!firebaseReady || !currentUser || !currentRole) return;
   const F = window.FB;
@@ -89,15 +94,17 @@ function startCloudListeners() {
     stopCloudListeners.push(F.onSnapshot(availableQ, snap => { rebuildDriverBookings(mergeDocs(snap), null); }, handleCloudError));
     stopCloudListeners.push(F.onSnapshot(acceptedQ, snap => { rebuildDriverBookings(null, mergeDocs(snap)); }, handleCloudError));
     const scheduleQ = F.query(F.collection(db, 'driverSchedules'), F.where('driverUid', '==', currentUser.uid));
-    stopCloudListeners.push(F.onSnapshot(scheduleQ, snap => { schedules = mergeDocs(snap); renderSchedules(); renderJobs(); }, handleCloudError));
+    stopCloudListeners.push(F.onSnapshot(scheduleQ, snap => {
+      schedules = mergeDocs(snap);
+      renderSchedules(); renderJobs();
+      cleanupDuplicateSchedules(schedules);
+    }, handleCloudError));
   }
   if (currentRole === 'admin') {
     stopCloudListeners.push(F.onSnapshot(F.collection(db, 'bookings'), snap => { bookings = mergeDocs(snap); render(); }, handleCloudError));
   }
 }
 
-let driverAvailable = [];
-let driverAccepted = [];
 function rebuildDriverBookings(available, accepted) {
   if (available) driverAvailable = available;
   if (accepted) driverAccepted = accepted;
@@ -176,7 +183,7 @@ async function signIn(expectedRole, email, password) {
 
 async function logout() {
   if (firebaseReady && auth) await window.FB.signOut(auth);
-  stopListeners(); currentUser = null; currentRole = null; driverProfile = null; bookings = []; schedules = [];
+  stopListeners(); currentUser = null; currentRole = null; driverProfile = null; bookings = []; schedules = []; driverAvailable = []; driverAccepted = [];
   updateAuthUI(); render();
 }
 
@@ -221,7 +228,6 @@ function overlapsSchedule(booking, schedule) {
 function languageMatches(booking) {
   if (!booking.language || booking.language === 'Any') return true;
   const languages = Array.isArray(driverProfile?.languages) ? driverProfile.languages : [];
-  // Existing driver accounts without a languages field remain eligible until their profile is updated.
   if (!languages.length) return true;
   return languages.includes(booking.language);
 }
@@ -239,9 +245,7 @@ function matchReasons(booking) {
 }
 
 function canDriverTake(booking) {
-  return languageMatches(booking)
-    && !schedules.some(s => overlapsSchedule(booking, s))
-    && !hasAcceptedConflict(booking);
+  return languageMatches(booking) && !schedules.some(s => overlapsSchedule(booking, s)) && !hasAcceptedConflict(booking);
 }
 
 async function acceptJob(id) {
@@ -296,6 +300,24 @@ async function addUnavailable() {
   }
 }
 $('#addUnavailable').onclick = addUnavailable;
+
+async function cleanupDuplicateSchedules(list) {
+  if (!firebaseReady || currentRole !== 'driver' || !currentUser || list.length < 2) return;
+  const seen = new Map();
+  const duplicates = [];
+  for (const s of list) {
+    const key = `${s.date}|${s.from}|${s.to}`;
+    if (seen.has(key)) duplicates.push(s.docId);
+    else seen.set(key, s.docId);
+  }
+  if (!duplicates.length) return;
+  try {
+    await Promise.all(duplicates.map(id => window.FB.deleteDoc(window.FB.doc(db, 'driverSchedules', id))));
+    $('#scheduleMessage').textContent = `✓ Removed ${duplicates.length} duplicate schedule${duplicates.length === 1 ? '' : 's'}.`;
+  } catch (e) {
+    console.error('Duplicate cleanup failed', e);
+  }
+}
 
 async function deleteSchedule(id) {
   if (!currentUser || currentRole !== 'driver') return;
