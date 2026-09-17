@@ -2,25 +2,29 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
-    function role(r) { return signedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == r; }
+    function userRole() { return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role : null; }
+    function role(r) { return userRole() == r; }
     function admin() { return role('admin'); }
 
     match /users/{uid} {
-      allow create: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn() && request.auth.uid == uid && request.resource.data.role in ['customer', 'driver'];
       allow read: if signedIn() && (request.auth.uid == uid || admin());
       allow update: if signedIn() && request.auth.uid == uid && request.resource.data.role == resource.data.role;
+      allow delete: if admin();
     }
 
     match /bookings/{id} {
-      allow create: if signedIn() && request.resource.data.customerUid == request.auth.uid;
-      allow read: if admin() || (signedIn() && resource.data.customerUid == request.auth.uid) || (signedIn() && role('driver') && resource.data.status == 'Available');
-      allow update: if admin() || (signedIn() && role('driver') && resource.data.status == 'Available' && request.resource.data.status == 'Accepted' && request.resource.data.driverUid == request.auth.uid) || (signedIn() && role('driver') && resource.data.driverUid == request.auth.uid && request.resource.data.status == 'Completed');
+      allow create: if signedIn() && role('customer') && request.resource.data.customerUid == request.auth.uid && request.resource.data.status == 'Available';
+      allow read: if admin() || (signedIn() && role('customer') && resource.data.customerUid == request.auth.uid) || (signedIn() && role('driver') && resource.data.status == 'Available') || (signedIn() && role('driver') && resource.data.driverUid == request.auth.uid);
+      allow update: if admin()
+        || (signedIn() && role('driver') && resource.data.status == 'Available' && request.resource.data.status == 'Accepted' && request.resource.data.driverUid == request.auth.uid)
+        || (signedIn() && role('driver') && resource.data.driverUid == request.auth.uid && request.resource.data.status == 'Completed');
       allow delete: if admin();
     }
 
     match /driverSchedules/{id} {
       allow create: if signedIn() && role('driver') && request.resource.data.driverUid == request.auth.uid;
-      allow read: if signedIn() && (role('driver') && resource.data.driverUid == request.auth.uid || admin());
+      allow read: if signedIn() && (admin() || (role('driver') && resource.data.driverUid == request.auth.uid));
       allow update, delete: if signedIn() && (admin() || (role('driver') && resource.data.driverUid == request.auth.uid));
     }
   }
