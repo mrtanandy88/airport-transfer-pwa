@@ -7,29 +7,31 @@ service cloud.firestore {
     function admin() { return role('admin'); }
     function validVehicle(v) { return v in ['Sedan', 'SUV', 'MPV']; }
     function validPlate(v) { return v is string && v.size() >= 2 && v.size() <= 20; }
+    function validCarModel(v) { return v is string && v.size() >= 2 && v.size() <= 60; }
+    function validCarColor(v) { return v is string && v.size() >= 2 && v.size() <= 30; }
     function validPhoto(v) { return v is string && v.size() > 100 && v.size() < 300000; }
 
     match /users/{uid} {
       allow create: if signedIn() && request.auth.uid == uid
         && request.resource.data.role in ['customer', 'driver']
-        && (request.resource.data.role != 'driver' || (validVehicle(request.resource.data.vehicleType) && validPlate(request.resource.data.plateNumber)));
+        && (request.resource.data.role != 'driver' || (validVehicle(request.resource.data.vehicleType) && validCarModel(request.resource.data.carModel) && validCarColor(request.resource.data.carColor) && validPlate(request.resource.data.plateNumber)));
       allow read: if signedIn() && (request.auth.uid == uid || admin());
       allow update: if admin()
         || (signedIn() && request.auth.uid == uid && resource.data.role == 'driver' && request.resource.data.role == 'driver'
-            && validVehicle(request.resource.data.vehicleType) && validPlate(request.resource.data.plateNumber)
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName','vehicleType','languages','plateNumber']));
+            && validVehicle(request.resource.data.vehicleType) && validCarModel(request.resource.data.carModel) && validCarColor(request.resource.data.carColor) && validPlate(request.resource.data.plateNumber)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName','vehicleType','carModel','carColor','languages','plateNumber']));
       allow delete: if admin();
     }
 
     match /driverPublicProfiles/{uid} {
       allow read: if signedIn() && (role('customer') || role('driver') || admin());
       allow create: if signedIn() && role('driver') && request.auth.uid == uid
-        && validVehicle(request.resource.data.vehicleType) && validPlate(request.resource.data.plateNumber)
+        && validVehicle(request.resource.data.vehicleType) && validCarModel(request.resource.data.carModel) && validCarColor(request.resource.data.carColor) && validPlate(request.resource.data.plateNumber)
         && validPhoto(request.resource.data.selfieDataUrl) && validPhoto(request.resource.data.carPhotoDataUrl);
       allow update: if admin() || (signedIn() && role('driver') && request.auth.uid == uid
-        && validVehicle(request.resource.data.vehicleType) && validPlate(request.resource.data.plateNumber)
+        && validVehicle(request.resource.data.vehicleType) && validCarModel(request.resource.data.carModel) && validCarColor(request.resource.data.carColor) && validPlate(request.resource.data.plateNumber)
         && validPhoto(request.resource.data.selfieDataUrl) && validPhoto(request.resource.data.carPhotoDataUrl)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName','vehicleType','plateNumber','languages','selfieDataUrl','carPhotoDataUrl','updatedAt']));
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName','vehicleType','carModel','carColor','plateNumber','languages','selfieDataUrl','carPhotoDataUrl','updatedAt']));
       allow delete: if admin();
     }
 
