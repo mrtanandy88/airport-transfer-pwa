@@ -1,39 +1,45 @@
 # Airport Transfer PWA — V2 RM0 MVP
 
-V2 adds the core structure for a real multi-user system:
+V2 is a multi-user PWA foundation for airport-transfer bookings:
 - Customer account + airport-transfer booking
 - Driver account + available jobs
 - Driver private unavailable schedules
 - Admin role check
-- Firebase Authentication + Firestore-ready data model
+- Firebase Authentication + Cloud Firestore
+- Real-time booking/schedule listeners
 - GitHub Pages PWA hosting
-- Local demo fallback when Firebase is not configured
+- Local demo fallback if Firebase cannot be started
 
-## Current status
-The site is live on GitHub Pages, but Firebase is intentionally left unconfigured until a Firebase project is connected. Until then, the app uses browser demo data.
+## Current Firebase setup
+The repository is connected to the Firebase web project `airport-transfer-pwa` through `js/firebase-config.js`.
 
-## Connect Firebase
-1. Create a Firebase project.
-2. Add a Web app in Firebase Project settings.
-3. Enable Authentication → Email/Password.
-4. Create a Firestore database.
-5. Copy the Web app configuration values into `js/firebase-config.js`.
-6. Publish `firestore.rules` from the Firebase Console.
-7. Create the first admin account with the normal customer sign-up, then change that user's `role` field to `admin` in Firestore. This should only be done by the project owner.
-8. Refresh the GitHub Pages site.
+Firebase services that must be enabled in the Firebase Console:
+1. Authentication → Email/Password
+2. Cloud Firestore → `(default)` database in `asia-southeast1 (Singapore)`
+3. Authentication → Settings → Authorized domains → `mrtanandy88.github.io`
+4. Firestore Rules → publish the contents of `firestore.rules`
+
+The client app configuration is intended to be public in a browser app. Never put Firebase service-account private keys, passwords, or other server secrets in this repository.
+
+## Roles
+- `customer`: can create and read their own bookings
+- `driver`: can read available jobs, accept jobs, complete their accepted jobs, and manage their own unavailable schedules
+- `admin`: can read/manage all bookings and driver schedules
+
+The client never offers an admin sign-up. To create the first admin, create a normal customer account and then, as the project owner, change that user's `role` field from `customer` to `admin` in Firestore.
 
 ## Firestore collections
 - `users/{uid}` — email and role (`customer`, `driver`, `admin`)
-- `bookings/{id}` — customer booking and driver assignment
+- `bookings/{id}` — customer booking, status and driver assignment
 - `driverSchedules/{id}` — driver unavailable date/time windows
 
 ## Important
-Firebase web configuration values are not passwords or service-account credentials. Never put a Firebase service-account private key or other secret credentials in this public repository.
+The app uses Firestore security rules for access control. The `firestore.rules` file in GitHub is a source file; it is **not automatically published to Firebase** just because it is stored in this repository. Publish those rules in Firebase Console before testing cloud bookings.
 
 ## Next build stages
-1. Firebase connection and real-time listeners
-2. Customer booking history/status notifications
-3. Driver matching based on language, schedule, capacity and location
+1. Test customer and driver accounts on different phones
+2. Customer booking history and status notifications
+3. Driver matching based on language, schedule, vehicle capacity and location
 4. Admin driver management and assignment/reassignment
 5. Maps/location selection
 6. Push notifications and production hardening
