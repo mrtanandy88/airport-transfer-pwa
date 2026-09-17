@@ -1,13 +1,12 @@
-// Firebase configuration for V2.
-// Replace the placeholder values with your Firebase Web App configuration.
-// Get these values from Firebase Console -> Project settings -> Your apps -> Web app.
+// Firebase Web App configuration.
+// This client-side configuration is safe to include in a web app.
 export const firebaseConfig = {
-  apiKey: 'PASTE_API_KEY_HERE',
-  authDomain: 'PASTE_PROJECT_ID.firebaseapp.com',
-  projectId: 'PASTE_PROJECT_ID_HERE',
-  storageBucket: 'PASTE_STORAGE_BUCKET_HERE',
-  messagingSenderId: 'PASTE_MESSAGING_SENDER_ID_HERE',
-  appId: 'PASTE_APP_ID_HERE'
+  apiKey: 'AIzaSyAHjLhItukHTwqlkCxJ13L3AkAn_smk8QQ',
+  authDomain: 'airport-transfer-pwa.firebaseapp.com',
+  projectId: 'airport-transfer-pwa',
+  storageBucket: 'airport-transfer-pwa.firebasestorage.app',
+  messagingSenderId: '104837336217',
+  appId: '1:104837336217:web:2723f0ebacb596affabc08'
 };
 
-export const firebaseConfigured = !firebaseConfig.apiKey.startsWith('PASTE_') && !firebaseConfig.projectId.startsWith('PASTE_');
+export const firebaseConfigured = true;
