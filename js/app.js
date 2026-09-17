@@ -1,7 +1,8 @@
 import { firebaseConfig, firebaseConfigured } from './firebase-config.js';
 
-const KEY = 'airportTransferBookingsV3';
+const KEY = 'airportTransferBookingsV4';
 const SKEY = 'airportTransferSchedulesV3';
+const VEHICLES = ['Sedan', 'SUV', 'MPV'];
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 
@@ -15,6 +16,8 @@ let auth = null;
 let firebaseReady = false;
 let filter = 'All';
 let stopCloudListeners = [];
+let driverAvailable = [];
+let driverAccepted = [];
 
 async function initFirebase() {
   if (!firebaseConfigured) {
@@ -30,7 +33,7 @@ async function initFirebase() {
     db = fs.getFirestore(fbApp);
     window.FB = { ...am, ...fs };
     firebaseReady = true;
-    $('#modeNotice').textContent = 'Firebase connected. Matching checks language, private schedule and booking time.';
+    $('#modeNotice').textContent = 'Firebase connected. Matching checks vehicle, language, private schedule and booking time.';
 
     am.onAuthStateChanged(auth, async user => {
       stopListeners();
@@ -52,6 +55,7 @@ async function initFirebase() {
           }
           driverProfile = snap.exists() ? snap.data() : null;
           startCloudListeners();
+          if (currentRole === 'driver') loadDriverProfileUI();
         } catch (e) {
           console.error(e);
           alert('Could not load your account profile: ' + e.message);
@@ -77,9 +81,6 @@ function stopListeners() {
 function mergeDocs(snap) {
   return snap.docs.map(d => ({ docId: d.id, ...d.data() }));
 }
-
-let driverAvailable = [];
-let driverAccepted = [];
 
 function startCloudListeners() {
   if (!firebaseReady || !currentUser || !currentRole) return;
@@ -152,15 +153,34 @@ function selectedLanguages() {
   return [...$('#driverLanguages').selectedOptions].map(o => o.value);
 }
 
+function selectedProfileLanguages() {
+  return [...$('#driverLanguagesProfile').selectedOptions].map(o => o.value);
+}
+
+function setSelected(select, values) {
+  const list = Array.isArray(values) ? values : [];
+  [...select.options].forEach(o => { o.selected = list.includes(o.value); });
+}
+
+function loadDriverProfileUI() {
+  if (!driverProfile) return;
+  $('#driverVehicleProfile').value = driverProfile.vehicleType || '';
+  setSelected($('#driverLanguagesProfile'), driverProfile.languages || []);
+}
+
 async function signUp(role, email, password) {
   if (!firebaseReady) return alert('Firebase is not connected.');
   email = (email || '').trim();
   if (!email || !password) return alert('Enter email and password.');
   if (password.length < 6) return alert('Password must be at least 6 characters.');
   try {
+    if (role === 'driver' && !VEHICLES.includes($('#driverVehicle').value)) return alert('Please select your vehicle.');
     const result = await window.FB.createUserWithEmailAndPassword(auth, email, password);
     const profile = { email, role, createdAt: window.FB.serverTimestamp() };
-    if (role === 'driver') profile.languages = selectedLanguages();
+    if (role === 'driver') {
+      profile.languages = selectedLanguages();
+      profile.vehicleType = $('#driverVehicle').value;
+    }
     await window.FB.setDoc(window.FB.doc(db, 'users', result.user.uid), profile);
     alert('Account created.');
   } catch (e) { alert(e.message); }
@@ -181,6 +201,26 @@ async function signIn(expectedRole, email, password) {
   } catch (e) { alert(e.message); }
 }
 
+async function saveDriverProfile() {
+  if (!currentUser || currentRole !== 'driver') return alert('Please sign in as a driver first.');
+  const vehicleType = $('#driverVehicleProfile').value;
+  if (!VEHICLES.includes(vehicleType)) return alert('Please select your vehicle.');
+  const languages = selectedProfileLanguages();
+  const button = $('#saveDriverProfile');
+  button.disabled = true; button.textContent = 'Saving...';
+  $('#driverProfileMessage').textContent = '';
+  try {
+    await window.FB.setDoc(window.FB.doc(db, 'users', currentUser.uid), { vehicleType, languages }, { merge: true });
+    driverProfile = { ...(driverProfile || {}), vehicleType, languages };
+    $('#driverProfileMessage').textContent = '✓ Driver profile saved. Vehicle matching is now active.';
+    renderJobs();
+  } catch (e) {
+    $('#driverProfileMessage').textContent = '✕ Save failed: ' + (e.code || 'error') + ' — ' + e.message;
+  } finally {
+    button.disabled = false; button.textContent = 'Save driver profile';
+  }
+}
+
 async function logout() {
   if (firebaseReady && auth) await window.FB.signOut(auth);
   stopListeners(); currentUser = null; currentRole = null; driverProfile = null; bookings = []; schedules = []; driverAvailable = []; driverAccepted = [];
@@ -194,6 +234,7 @@ $('#driverLogin').onclick = () => signIn('driver', $('#driverEmail').value, $('#
 $('#adminLogin').onclick = () => signIn('admin', $('#adminEmail').value, $('#adminPassword').value);
 $('#customerLogout').onclick = logout;
 $('#driverLogout').onclick = logout;
+$('#saveDriverProfile').onclick = saveDriverProfile;
 
 async function addBooking(booking) {
   if (firebaseReady) {
@@ -207,8 +248,10 @@ async function addBooking(booking) {
 $('#bookingForm').addEventListener('submit', async e => {
   e.preventDefault();
   const f = new FormData(e.target);
-  const booking = { id: 'AT-' + Date.now().toString().slice(-6), name: f.get('name'), phone: f.get('phone'), pickup: f.get('pickup'), destination: f.get('destination'), date: f.get('date'), time: f.get('time'), passengers: Number(f.get('passengers')), luggage: Number(f.get('luggage') || 0), language: f.get('language'), status: 'Available', driver: '', driverUid: '' };
-  try { await addBooking(booking); e.target.reset(); $('#customerResult').innerHTML = `<div class="booking success"><h3>Booking placed ✓</h3><p>Your booking ID is <b>${escapeHtml(booking.id)}</b>.</p><span class="badge">Available</span></div>`; }
+  const vehicleType = f.get('vehicleType');
+  if (!VEHICLES.includes(vehicleType)) return alert('Please select a preferred vehicle.');
+  const booking = { id: 'AT-' + Date.now().toString().slice(-6), name: f.get('name'), phone: f.get('phone'), pickup: f.get('pickup'), destination: f.get('destination'), date: f.get('date'), time: f.get('time'), passengers: Number(f.get('passengers')), luggage: Number(f.get('luggage') || 0), language: f.get('language'), vehicleType, status: 'Available', driver: '', driverUid: '' };
+  try { await addBooking(booking); e.target.reset(); $('#customerResult').innerHTML = `<div class="booking success"><h3>Booking placed ✓</h3><p>Your booking ID is <b>${escapeHtml(booking.id)}</b>.</p><p>Vehicle: <b>${escapeHtml(booking.vehicleType)}</b></p><span class="badge">Available</span></div>`; }
   catch (err) { alert('Could not save booking: ' + err.message); }
 });
 
@@ -232,27 +275,30 @@ function languageMatches(booking) {
   return languages.includes(booking.language);
 }
 
+function vehicleMatches(booking) {
+  const requested = booking.vehicleType;
+  const driverVehicle = driverProfile?.vehicleType;
+  return VEHICLES.includes(requested) && driverVehicle === requested;
+}
+
 function hasAcceptedConflict(booking) {
   return driverAccepted.some(b => b.status === 'Accepted' && b.date === booking.date && Math.abs(timeToMinutes(b.time) - timeToMinutes(booking.time)) < 120);
 }
 
 function matchReasons(booking) {
-  const reasons = [];
-  if (booking.language && booking.language !== 'Any') reasons.push('language match');
-  reasons.push('schedule clear');
-  reasons.push('no nearby accepted job');
-  return reasons;
+  return [`vehicle: ${booking.vehicleType}`, booking.language && booking.language !== 'Any' ? 'language match' : 'language flexible', 'schedule clear', 'no nearby accepted job'];
 }
 
 function canDriverTake(booking) {
-  return languageMatches(booking) && !schedules.some(s => overlapsSchedule(booking, s)) && !hasAcceptedConflict(booking);
+  return vehicleMatches(booking) && languageMatches(booking) && !schedules.some(s => overlapsSchedule(booking, s)) && !hasAcceptedConflict(booking);
 }
 
 async function acceptJob(id) {
   const booking = bookings.find(x => x.docId === id || x.id === id);
   if (!booking || !currentUser || currentRole !== 'driver') return alert('Please sign in as a driver first.');
+  if (!driverProfile?.vehicleType) return alert('Please set your vehicle in My driver profile before accepting jobs.');
   if (booking.status !== 'Available') return alert('This job has already been taken.');
-  if (!canDriverTake(booking)) return alert('This job no longer matches your language, private schedule or existing job schedule.');
+  if (!canDriverTake(booking)) return alert('This job no longer matches your vehicle, language, private schedule or existing job schedule.');
   try {
     if (firebaseReady) {
       await window.FB.updateDoc(window.FB.doc(db, 'bookings', booking.docId), { status: 'Accepted', driver: currentUser.email, driverUid: currentUser.uid, acceptedAt: window.FB.serverTimestamp() });
@@ -273,12 +319,9 @@ async function addUnavailable() {
   if (from >= to) return alert('The To time must be later than the From time.');
   const duplicate = schedules.some(s => s.date === date && s.from === from && s.to === to);
   if (duplicate) { $('#scheduleMessage').textContent = 'Already added — duplicate schedule prevented.'; return; }
-
   const schedule = { date, from, to, driverUid: currentUser.uid };
   const button = $('#addUnavailable');
-  button.disabled = true;
-  button.textContent = 'Saving...';
-  $('#scheduleMessage').textContent = '';
+  button.disabled = true; button.textContent = 'Saving...'; $('#scheduleMessage').textContent = '';
   try {
     if (firebaseReady) {
       const safeId = encodeURIComponent(`${currentUser.uid}_${date}_${from}_${to}`);
@@ -292,31 +335,24 @@ async function addUnavailable() {
     $('#scheduleMessage').textContent = '✓ Unavailable time saved. Duplicate entries are blocked.';
     $('#unavailableDate').value = ''; $('#unavailableFrom').value = ''; $('#unavailableTo').value = '';
   } catch (e) {
-    console.error(e);
-    $('#scheduleMessage').textContent = '✕ Save failed: ' + (e.code || 'error') + ' — ' + e.message;
+    console.error(e); $('#scheduleMessage').textContent = '✕ Save failed: ' + (e.code || 'error') + ' — ' + e.message;
     alert('Could not save unavailable time.\n\n' + (e.code || 'error') + ': ' + e.message);
-  } finally {
-    button.disabled = false; button.textContent = 'Add unavailable time';
-  }
+  } finally { button.disabled = false; button.textContent = 'Add unavailable time'; }
 }
 $('#addUnavailable').onclick = addUnavailable;
 
 async function cleanupDuplicateSchedules(list) {
   if (!firebaseReady || currentRole !== 'driver' || !currentUser || list.length < 2) return;
-  const seen = new Map();
-  const duplicates = [];
+  const seen = new Map(); const duplicates = [];
   for (const s of list) {
     const key = `${s.date}|${s.from}|${s.to}`;
-    if (seen.has(key)) duplicates.push(s.docId);
-    else seen.set(key, s.docId);
+    if (seen.has(key)) duplicates.push(s.docId); else seen.set(key, s.docId);
   }
   if (!duplicates.length) return;
   try {
     await Promise.all(duplicates.map(id => window.FB.deleteDoc(window.FB.doc(db, 'driverSchedules', id))));
     $('#scheduleMessage').textContent = `✓ Removed ${duplicates.length} duplicate schedule${duplicates.length === 1 ? '' : 's'}.`;
-  } catch (e) {
-    console.error('Duplicate cleanup failed', e);
-  }
+  } catch (e) { console.error('Duplicate cleanup failed', e); }
 }
 
 async function deleteSchedule(id) {
@@ -336,13 +372,18 @@ function renderSchedules() {
 function renderJobs() {
   if (currentRole !== 'driver') { $('#driverJobs').innerHTML = ''; return; }
   const available = driverAvailable.filter(b => b.status === 'Available' && canDriverTake(b));
-  $('#driverJobs').innerHTML = available.length ? available.map(b => `<div class="booking"><h3>${escapeHtml(b.pickup)} → ${escapeHtml(b.destination)}</h3><p>${escapeHtml(b.date)} at ${escapeHtml(b.time)} • ${escapeHtml(String(b.passengers))} passenger(s) • ${escapeHtml(b.language)}</p><small>${escapeHtml(b.name)} • ${escapeHtml(b.id)} • ${escapeHtml(matchReasons(b).join(' • '))}</small><button class="accept" onclick="acceptJob('${escapeHtml(b.docId)}')">Accept job</button></div>`).join('') : '<p class="muted">No jobs currently matching your language, private schedule and existing jobs.</p>';
+  if (!available.length) {
+    const vehicle = driverProfile?.vehicleType;
+    $('#driverJobs').innerHTML = vehicle ? '<p class="muted">No jobs currently matching your vehicle, language, private schedule and existing jobs.</p>' : '<p class="muted">Set your vehicle in My driver profile to see matching jobs.</p>';
+    return;
+  }
+  $('#driverJobs').innerHTML = available.map(b => `<div class="booking"><h3>${escapeHtml(b.pickup)} → ${escapeHtml(b.destination)}</h3><p>${escapeHtml(b.date)} at ${escapeHtml(b.time)} • ${escapeHtml(String(b.passengers))} passenger(s) • ${escapeHtml(b.language)}</p><p>Vehicle: <b>${escapeHtml(b.vehicleType || 'Not specified')}</b></p><small>${escapeHtml(b.name)} • ${escapeHtml(b.id)} • ${escapeHtml(matchReasons(b).join(' • '))}</small><button class="accept" onclick="acceptJob('${escapeHtml(b.docId)}')">Accept job</button></div>`).join('');
 }
 
 function renderCustomerBookings() {
   if (currentRole !== 'customer') { $('#customerBookings').innerHTML = ''; return; }
   const list = [...bookings].sort((a,b) => String(b.date + b.time).localeCompare(String(a.date + a.time)));
-  $('#customerBookings').innerHTML = list.length ? `<h3>Your bookings</h3>` + list.map(b => `<div class="booking"><h3>${escapeHtml(b.id)} <span class="badge">${escapeHtml(b.status)}</span></h3><p>${escapeHtml(b.pickup)} → ${escapeHtml(b.destination)}</p><p>${escapeHtml(b.date)} ${escapeHtml(b.time)} • ${escapeHtml(b.language)}</p><small>${b.driver ? `Driver assigned: ${escapeHtml(b.driver)}` : 'Waiting for a matched driver'}</small></div>`).join('') : '<p class="muted">No bookings yet.</p>';
+  $('#customerBookings').innerHTML = list.length ? `<h3>Your bookings</h3>` + list.map(b => `<div class="booking"><h3>${escapeHtml(b.id)} <span class="badge">${escapeHtml(b.status)}</span></h3><p>${escapeHtml(b.pickup)} → ${escapeHtml(b.destination)}</p><p>${escapeHtml(b.date)} ${escapeHtml(b.time)} • ${escapeHtml(b.language)} • Vehicle: <b>${escapeHtml(b.vehicleType || 'Not specified')}</b></p><small>${b.driver ? `Driver assigned: ${escapeHtml(b.driver)}` : 'Waiting for a matched driver'}</small></div>`).join('') : '<p class="muted">No bookings yet.</p>';
 }
 
 function render() {
@@ -350,7 +391,7 @@ function render() {
   const total = bookings.length, availableCount = bookings.filter(b => b.status === 'Available').length, accepted = bookings.filter(b => b.status === 'Accepted').length, completed = bookings.filter(b => b.status === 'Completed').length;
   $('#adminStats').innerHTML = `<div class="stat"><b>${total}</b><small>Total</small></div><div class="stat"><b>${availableCount}</b><small>Available</small></div><div class="stat"><b>${accepted}</b><small>Accepted</small></div><div class="stat"><b>${completed}</b><small>Completed</small></div>`;
   const list = filter === 'All' ? bookings : bookings.filter(b => b.status === filter);
-  $('#adminBookings').innerHTML = list.length ? list.map(b => `<div class="booking"><h3>${escapeHtml(b.id)} <span class="badge">${escapeHtml(b.status)}</span></h3><p><b>${escapeHtml(b.pickup)}</b> → ${escapeHtml(b.destination)}</p><p>${escapeHtml(b.date)} ${escapeHtml(b.time)} • ${escapeHtml(b.name)} • ${escapeHtml(b.phone)}</p><small>${b.driver ? `Driver: ${escapeHtml(b.driver)}` : 'No driver yet'}</small>${b.status === 'Accepted' && currentRole === 'admin' ? `<button class="secondary complete" onclick="completeJob('${escapeHtml(b.docId)}')">Mark completed</button>` : ''}</div>`).join('') : '<p class="muted">No bookings.</p>';
+  $('#adminBookings').innerHTML = list.length ? list.map(b => `<div class="booking"><h3>${escapeHtml(b.id)} <span class="badge">${escapeHtml(b.status)}</span></h3><p><b>${escapeHtml(b.pickup)}</b> → ${escapeHtml(b.destination)}</p><p>${escapeHtml(b.date)} ${escapeHtml(b.time)} • ${escapeHtml(b.name)} • ${escapeHtml(b.phone)}</p><p>Vehicle: <b>${escapeHtml(b.vehicleType || 'Not specified')}</b> • Language: ${escapeHtml(b.language || 'Any')}</p><small>${b.driver ? `Driver: ${escapeHtml(b.driver)}` : 'No driver yet'}</small>${b.status === 'Accepted' && currentRole === 'admin' ? `<button class="secondary complete" onclick="completeJob('${escapeHtml(b.docId)}')">Mark completed</button>` : ''}</div>`).join('') : '<p class="muted">No bookings.</p>';
 }
 
 window.completeJob = async id => {
