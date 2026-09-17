@@ -1,10 +1,11 @@
 {
-  "name": "Airport Transfer MVP",
-  "short_name": "Airport Transfer",
-  "start_url": ".",
-  "display": "standalone",
-  "background_color": "#f8fafc",
-  "theme_color": "#111827",
-  "description": "Simple airport transfer booking PWA",
-  "icons": []
+  "name":"Airport Transfer Platform",
+  "short_name":"Airport Transfer",
+  "start_url":".",
+  "scope":".",
+  "display":"standalone",
+  "background_color":"#f5f7fb",
+  "theme_color":"#111827",
+  "description":"Airport transfer booking and driver management PWA",
+  "icons":[]
 }
