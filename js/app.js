@@ -169,8 +169,21 @@ async function saveDriverProfile() {
     if (carFile) carPhotoDataUrl = await compressImage(carFile, 1000, 220000);
     if (!selfieDataUrl || !carPhotoDataUrl) return alert('Please upload both your selfie and car photo before saving your profile.');
     const languages = selectedProfileLanguages();
-    await window.FB.setDoc(window.FB.doc(db, 'users', currentUser.uid), { displayName, vehicleType, carModel, carColor, plateNumber, languages }, { merge: true });
-    await window.FB.setDoc(window.FB.doc(db, 'driverPublicProfiles', currentUser.uid), { driverUid: currentUser.uid, displayName, vehicleType, carModel, carColor, plateNumber, languages, selfieDataUrl, carPhotoDataUrl, updatedAt: window.FB.serverTimestamp() }, { merge: true });
+
+    try {
+      await window.FB.setDoc(window.FB.doc(db, 'users', currentUser.uid), { displayName, vehicleType, carModel, carColor, plateNumber, languages }, { merge: true });
+    } catch (e) {
+      console.error('Driver users profile save failed:', e);
+      throw new Error('users profile save failed (' + (e.code || 'error') + '): ' + e.message);
+    }
+
+    try {
+      await window.FB.setDoc(window.FB.doc(db, 'driverPublicProfiles', currentUser.uid), { driverUid: currentUser.uid, displayName, vehicleType, carModel, carColor, plateNumber, languages, selfieDataUrl, carPhotoDataUrl, updatedAt: window.FB.serverTimestamp() }, { merge: true });
+    } catch (e) {
+      console.error('Driver public profile save failed:', e);
+      throw new Error('driverPublicProfiles save failed (' + (e.code || 'error') + '): ' + e.message);
+    }
+
     driverProfile = { ...(driverProfile || {}), displayName, vehicleType, carModel, carColor, plateNumber, languages }; driverPublicProfile = { ...(driverPublicProfile || {}), displayName, vehicleType, carModel, carColor, plateNumber, languages, selfieDataUrl, carPhotoDataUrl };
     $('#driverSelfieProfile').value = ''; $('#driverCarPhotoProfile').value = ''; renderDriverPhotoPreview(driverPublicProfile); renderJobs();
     $('#driverProfileMessage').textContent = '✓ Driver profile saved. Customers will see your name, vehicle, model, color, plate and photos after assignment.';
