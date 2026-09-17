@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111827">
+  <meta name="description" content="Simple airport transfer booking PWA">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/style.css">
+  <title>Airport Transfer MVP</title>
+</head>
+<body>
+<header class="topbar"><div><strong>Airport Transfer</strong><span>MVP</span></div><button id="installBtn" class="ghost hidden">Install</button></header>
+<main>
+  <section id="home" class="screen active">
+    <div class="hero"><p class="eyebrow">SIMPLE • FAST • PRE-BOOKED</p><h1>Airport transfers made simple.</h1><p>Customers book. Drivers accept. Admin monitors.</p></div>
+    <div class="grid">
+      <button class="card action" data-go="customer"><b>Book a transfer</b><small>Customer booking</small></button>
+      <button class="card action" data-go="driver"><b>Driver job board</b><small>View & accept jobs</small></button>
+      <button class="card action" data-go="admin"><b>Admin dashboard</b><small>Monitor bookings</small></button>
+    </div>
+  </section>
+
+  <section id="customer" class="screen">
+    <button class="back" data-go="home">← Back</button>
+    <h2>Book airport transfer</h2>
+    <form id="bookingForm" class="panel">
+      <label>Customer name<input name="name" required></label>
+      <label>Phone<input name="phone" type="tel" required></label>
+      <label>Pickup location<input name="pickup" placeholder="Hotel / address" required></label>
+      <label>Airport / destination<input name="destination" placeholder="e.g. KLIA" required></label>
+      <div class="two"><label>Date<input name="date" type="date" required></label><label>Time<input name="time" type="time" required></label></div>
+      <div class="two"><label>Passengers<input name="passengers" type="number" min="1" value="1" required></label><label>Luggage<input name="luggage" type="number" min="0" value="1"></label></div>
+      <label>Preferred driver language
+        <select name="language"><option>Any</option><option>English</option><option>Malay</option><option>Mandarin</option><option>Cantonese</option><option>Tamil</option></select>
+      </label>
+      <button class="primary" type="submit">Place booking</button>
+    </form>
+    <div id="customerResult"></div>
+  </section>
+
+  <section id="driver" class="screen">
+    <button class="back" data-go="home">← Back</button>
+    <h2>Driver job board</h2>
+    <p class="muted">Jobs are stored in this browser for the RM0 prototype.</p>
+    <div id="driverJobs"></div>
+  </section>
+
+  <section id="admin" class="screen">
+    <button class="back" data-go="home">← Back</button>
+    <div class="row"><h2>Admin dashboard</h2><button id="clearAll" class="danger">Clear demo data</button></div>
+    <div id="adminStats" class="stats"></div>
+    <div id="adminBookings"></div>
+  </section>
+</main>
+<nav class="bottom"><button data-go="home">Home</button><button data-go="customer">Book</button><button data-go="driver">Driver</button><button data-go="admin">Admin</button></nav>
+<script src="js/app.js"></script>
+</body>
+</html>
