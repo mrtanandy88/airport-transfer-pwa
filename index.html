@@ -1,59 +1,14 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#111827">
-  <meta name="description" content="Simple airport transfer booking PWA">
-  <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="css/style.css">
-  <title>Airport Transfer MVP</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#111827"><meta name="description" content="Airport transfer booking and driver management PWA"><link rel="manifest" href="manifest.json"><link rel="stylesheet" href="css/style.css"><title>Airport Transfer</title>
 </head>
 <body>
-<header class="topbar"><div><strong>Airport Transfer</strong><span>MVP</span></div><button id="installBtn" class="ghost hidden">Install</button></header>
+<header class="topbar"><div><strong>Airport Transfer</strong><span>V2 MVP</span></div><button id="installBtn" class="ghost hidden">Install</button></header>
 <main>
-  <section id="home" class="screen active">
-    <div class="hero"><p class="eyebrow">SIMPLE • FAST • PRE-BOOKED</p><h1>Airport transfers made simple.</h1><p>Customers book. Drivers accept. Admin monitors.</p></div>
-    <div class="grid">
-      <button class="card action" data-go="customer"><b>Book a transfer</b><small>Customer booking</small></button>
-      <button class="card action" data-go="driver"><b>Driver job board</b><small>View & accept jobs</small></button>
-      <button class="card action" data-go="admin"><b>Admin dashboard</b><small>Monitor bookings</small></button>
-    </div>
-  </section>
-
-  <section id="customer" class="screen">
-    <button class="back" data-go="home">← Back</button>
-    <h2>Book airport transfer</h2>
-    <form id="bookingForm" class="panel">
-      <label>Customer name<input name="name" required></label>
-      <label>Phone<input name="phone" type="tel" required></label>
-      <label>Pickup location<input name="pickup" placeholder="Hotel / address" required></label>
-      <label>Airport / destination<input name="destination" placeholder="e.g. KLIA" required></label>
-      <div class="two"><label>Date<input name="date" type="date" required></label><label>Time<input name="time" type="time" required></label></div>
-      <div class="two"><label>Passengers<input name="passengers" type="number" min="1" value="1" required></label><label>Luggage<input name="luggage" type="number" min="0" value="1"></label></div>
-      <label>Preferred driver language
-        <select name="language"><option>Any</option><option>English</option><option>Malay</option><option>Mandarin</option><option>Cantonese</option><option>Tamil</option></select>
-      </label>
-      <button class="primary" type="submit">Place booking</button>
-    </form>
-    <div id="customerResult"></div>
-  </section>
-
-  <section id="driver" class="screen">
-    <button class="back" data-go="home">← Back</button>
-    <h2>Driver job board</h2>
-    <p class="muted">Jobs are stored in this browser for the RM0 prototype.</p>
-    <div id="driverJobs"></div>
-  </section>
-
-  <section id="admin" class="screen">
-    <button class="back" data-go="home">← Back</button>
-    <div class="row"><h2>Admin dashboard</h2><button id="clearAll" class="danger">Clear demo data</button></div>
-    <div id="adminStats" class="stats"></div>
-    <div id="adminBookings"></div>
-  </section>
-</main>
-<nav class="bottom"><button data-go="home">Home</button><button data-go="customer">Book</button><button data-go="driver">Driver</button><button data-go="admin">Admin</button></nav>
-<script src="js/app.js"></script>
-</body>
-</html>
+<section id="home" class="screen active"><div class="hero"><p class="eyebrow">AIRPORT TRANSFER • PRE-BOOKING</p><h1>Book. Match. Drive.</h1><p>A simple platform for customers, drivers and admin.</p></div><div id="modeNotice" class="notice"></div><div class="grid"><button class="card action" data-go="customer"><b>Customer</b><small>Book an airport transfer</small></button><button class="card action" data-go="driver"><b>Driver</b><small>View jobs & manage availability</small></button><button class="card action" data-go="admin"><b>Admin</b><small>Monitor bookings & drivers</small></button></div></section>
+<section id="customer" class="screen"><button class="back" data-go="home">← Back</button><div class="row"><h2>Customer booking</h2><button id="customerLogout" class="link hidden">Logout</button></div><div id="customerAuth" class="panel"><h3>Customer access</h3><p class="muted">For the Firebase version, sign in with email and password. Demo mode works without an account.</p><label>Email<input id="customerEmail" type="email" placeholder="you@example.com"></label><label>Password<input id="customerPassword" type="password" placeholder="••••••••"></label><div class="two"><button id="customerLogin" class="primary">Sign in</button><button id="customerSignup" class="secondary">Create account</button></div></div><form id="bookingForm" class="panel hidden"><label>Customer name<input name="name" required></label><label>Phone<input name="phone" type="tel" required></label><label>Pickup location<input name="pickup" placeholder="Hotel / address" required></label><label>Airport / destination<input name="destination" placeholder="e.g. KLIA" required></label><div class="two"><label>Date<input name="date" type="date" required></label><label>Time<input name="time" type="time" required></label></div><div class="two"><label>Passengers<input name="passengers" type="number" min="1" value="1" required></label><label>Luggage<input name="luggage" type="number" min="0" value="1"></label></div><label>Preferred driver language<select name="language"><option>Any</option><option>English</option><option>Malay</option><option>Mandarin</option><option>Cantonese</option><option>Tamil</option></select></label><button class="primary" type="submit">Place booking</button></form><div id="customerResult"></div><div id="customerBookings"></div></section>
+<section id="driver" class="screen"><button class="back" data-go="home">← Back</button><div class="row"><h2>Driver</h2><button id="driverLogout" class="link hidden">Logout</button></div><div id="driverAuth" class="panel"><h3>Driver access</h3><label>Email<input id="driverEmail" type="email" placeholder="driver@example.com"></label><label>Password<input id="driverPassword" type="password" placeholder="••••••••"></label><div class="two"><button id="driverLogin" class="primary">Sign in</button><button id="driverSignup" class="secondary">Create account</button></div></div><div id="driverArea" class="hidden"><div class="panel"><h3>My availability</h3><p class="muted">Add a time when you are unavailable. This is the first building block for automatic matching.</p><div class="two"><label>Date<input id="unavailableDate" type="date"></label><label>From<input id="unavailableFrom" type="time"></label></div><div class="two"><label>To<input id="unavailableTo" type="time"></label><button id="addUnavailable" class="secondary">Add unavailable time</button></div><div id="scheduleList"></div></div><h3>Available jobs</h3><div id="driverJobs"></div></div></section>
+<section id="admin" class="screen"><button class="back" data-go="home">← Back</button><div class="row"><h2>Admin dashboard</h2><button id="clearAll" class="danger">Clear demo data</button></div><div id="adminAuth" class="panel"><h3>Admin access</h3><p class="muted">Demo mode uses this browser. Firebase admin access will be secured with roles/rules in the next configuration step.</p><label>Email<input id="adminEmail" type="email" placeholder="admin@example.com"></label><label>Password<input id="adminPassword" type="password"></label><button id="adminLogin" class="primary">Sign in</button></div><div id="adminArea" class="hidden"><div id="adminStats" class="stats"></div><div class="filters"><button data-filter="All" class="filter active">All</button><button data-filter="Available" class="filter">Available</button><button data-filter="Accepted" class="filter">Accepted</button><button data-filter="Completed" class="filter">Completed</button></div><div id="adminBookings"></div></div></section>
+</main><nav class="bottom"><button data-go="home">Home</button><button data-go="customer">Book</button><button data-go="driver">Driver</button><button data-go="admin">Admin</button></nav>
+<script type="module" src="js/app.js"></script></body></html>
