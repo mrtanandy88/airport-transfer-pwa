@@ -1,23 +1,16 @@
 import { firebaseConfig, firebaseConfigured } from './firebase-config.js';
 
-const KEY = 'airportTransferBookingsV4';
+const KEY = 'airportTransferBookingsV5';
 const SKEY = 'airportTransferSchedulesV3';
 const VEHICLES = ['Sedan', 'SUV', 'MPV'];
+const LANGUAGES = ['English', 'Malay', 'Mandarin', 'Cantonese', 'Tamil'];
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 
-let bookings = [];
-let schedules = [];
-let driverProfile = null;
-let currentUser = null;
-let currentRole = null;
-let db = null;
-let auth = null;
-let firebaseReady = false;
-let filter = 'All';
-let stopCloudListeners = [];
-let driverAvailable = [];
-let driverAccepted = [];
+let bookings = [], schedules = [], driverProfile = null, driverPublicProfile = null;
+let currentUser = null, currentRole = null, db = null, auth = null, firebaseReady = false;
+let filter = 'All', stopCloudListeners = [], driverAvailable = [], driverAccepted = [];
+const publicProfileCache = new Map();
 
 async function initFirebase() {
   if (!firebaseConfigured) {
@@ -29,58 +22,39 @@ async function initFirebase() {
     const am = await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js');
     const fs = await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
     const fbApp = app.initializeApp(firebaseConfig);
-    auth = am.getAuth(fbApp);
-    db = fs.getFirestore(fbApp);
-    window.FB = { ...am, ...fs };
-    firebaseReady = true;
+    auth = am.getAuth(fbApp); db = fs.getFirestore(fbApp);
+    window.FB = { ...am, ...fs }; firebaseReady = true;
     $('#modeNotice').textContent = 'Firebase connected. Matching checks vehicle, language, private schedule and booking time.';
-
     am.onAuthStateChanged(auth, async user => {
-      stopListeners();
-      currentUser = user;
-      currentRole = null;
-      driverProfile = null;
-      bookings = [];
-      schedules = [];
-      driverAvailable = [];
-      driverAccepted = [];
+      stopListeners(); currentUser = user; currentRole = null; driverProfile = null; driverPublicProfile = null;
+      bookings = []; schedules = []; driverAvailable = []; driverAccepted = [];
       if (user) {
         try {
           const snap = await fs.getDoc(fs.doc(db, 'users', user.uid));
           currentRole = snap.exists() ? snap.data().role : null;
           if (!['customer', 'driver', 'admin'].includes(currentRole)) {
-            await am.signOut(auth);
-            alert('Your account has no valid app role.');
-            return;
+            await am.signOut(auth); alert('Your account has no valid app role.'); return;
           }
           driverProfile = snap.exists() ? snap.data() : null;
+          if (currentRole === 'driver') {
+            const pub = await fs.getDoc(fs.doc(db, 'driverPublicProfiles', user.uid));
+            driverPublicProfile = pub.exists() ? pub.data() : null;
+            loadDriverProfileUI();
+          }
           startCloudListeners();
-          if (currentRole === 'driver') loadDriverProfileUI();
         } catch (e) {
-          console.error(e);
-          alert('Could not load your account profile: ' + e.message);
-          await am.signOut(auth);
-          return;
+          console.error(e); alert('Could not load your account profile: ' + e.message); await am.signOut(auth); return;
         }
       }
       updateAuthUI(); render();
     });
   } catch (e) {
-    console.error(e);
-    firebaseReady = false;
-    $('#modeNotice').textContent = 'Firebase could not start: ' + e.message;
-    updateAuthUI(); render();
+    console.error(e); firebaseReady = false; $('#modeNotice').textContent = 'Firebase could not start: ' + e.message; updateAuthUI(); render();
   }
 }
 
-function stopListeners() {
-  stopCloudListeners.forEach(stop => { try { stop(); } catch (_) {} });
-  stopCloudListeners = [];
-}
-
-function mergeDocs(snap) {
-  return snap.docs.map(d => ({ docId: d.id, ...d.data() }));
-}
+function stopListeners() { stopCloudListeners.forEach(stop => { try { stop(); } catch (_) {} }); stopCloudListeners = []; }
+function mergeDocs(snap) { return snap.docs.map(d => ({ docId: d.id, ...d.data() })); }
 
 function startCloudListeners() {
   if (!firebaseReady || !currentUser || !currentRole) return;
@@ -95,321 +69,171 @@ function startCloudListeners() {
     stopCloudListeners.push(F.onSnapshot(availableQ, snap => { rebuildDriverBookings(mergeDocs(snap), null); }, handleCloudError));
     stopCloudListeners.push(F.onSnapshot(acceptedQ, snap => { rebuildDriverBookings(null, mergeDocs(snap)); }, handleCloudError));
     const scheduleQ = F.query(F.collection(db, 'driverSchedules'), F.where('driverUid', '==', currentUser.uid));
-    stopCloudListeners.push(F.onSnapshot(scheduleQ, snap => {
-      schedules = mergeDocs(snap);
-      renderSchedules(); renderJobs();
-      cleanupDuplicateSchedules(schedules);
-    }, handleCloudError));
+    stopCloudListeners.push(F.onSnapshot(scheduleQ, snap => { schedules = mergeDocs(snap); renderSchedules(); renderJobs(); cleanupDuplicateSchedules(schedules); }, handleCloudError));
   }
-  if (currentRole === 'admin') {
-    stopCloudListeners.push(F.onSnapshot(F.collection(db, 'bookings'), snap => { bookings = mergeDocs(snap); render(); }, handleCloudError));
-  }
+  if (currentRole === 'admin') stopCloudListeners.push(F.onSnapshot(F.collection(db, 'bookings'), snap => { bookings = mergeDocs(snap); render(); }, handleCloudError));
 }
 
 function rebuildDriverBookings(available, accepted) {
-  if (available) driverAvailable = available;
-  if (accepted) driverAccepted = accepted;
-  const map = new Map();
-  [...driverAvailable, ...driverAccepted].forEach(b => map.set(b.docId, b));
-  bookings = [...map.values()];
-  render();
+  if (available) driverAvailable = available; if (accepted) driverAccepted = accepted;
+  const map = new Map(); [...driverAvailable, ...driverAccepted].forEach(b => map.set(b.docId, b)); bookings = [...map.values()]; render();
 }
-
 function handleCloudError(error) {
-  console.error(error);
-  const code = error?.code || 'unknown';
-  $('#modeNotice').textContent = code === 'permission-denied'
-    ? 'Firebase denied this action. Check the user role and published Firestore rules.'
-    : 'Firebase error (' + code + '): ' + (error?.message || 'Unknown error');
+  console.error(error); const code = error?.code || 'unknown';
+  $('#modeNotice').textContent = code === 'permission-denied' ? 'Firebase denied this action. Check the user role and published Firestore rules.' : 'Firebase error (' + code + '): ' + (error?.message || 'Unknown error');
 }
-
-function show(id) {
-  $$('.screen').forEach(x => x.classList.remove('active'));
-  $('#' + id).classList.add('active');
-  render(); updateAuthUI();
-}
+function show(id) { $$('.screen').forEach(x => x.classList.remove('active')); $('#' + id).classList.add('active'); render(); updateAuthUI(); }
 $$('[data-go]').forEach(b => b.addEventListener('click', () => show(b.dataset.go)));
 
 function updateAuthUI() {
   const signed = !!currentUser;
   if (!firebaseReady) {
-    $('#customerAuth').classList.add('hidden'); $('#bookingForm').classList.remove('hidden');
-    $('#driverAuth').classList.add('hidden'); $('#driverArea').classList.remove('hidden');
-    $('#adminAuth').classList.add('hidden'); $('#adminArea').classList.remove('hidden');
-    $('#customerLogout').classList.add('hidden'); $('#driverLogout').classList.add('hidden');
-    return;
+    $('#customerAuth').classList.add('hidden'); $('#bookingForm').classList.remove('hidden'); $('#driverAuth').classList.add('hidden'); $('#driverArea').classList.remove('hidden'); $('#adminAuth').classList.add('hidden'); $('#adminArea').classList.remove('hidden'); return;
   }
-  $('#customerAuth').classList.toggle('hidden', signed && currentRole === 'customer');
-  $('#bookingForm').classList.toggle('hidden', !(signed && currentRole === 'customer'));
-  $('#customerLogout').classList.toggle('hidden', !(signed && currentRole === 'customer'));
-  $('#driverAuth').classList.toggle('hidden', signed && currentRole === 'driver');
-  $('#driverArea').classList.toggle('hidden', !(signed && currentRole === 'driver'));
-  $('#driverLogout').classList.toggle('hidden', !(signed && currentRole === 'driver'));
-  $('#adminAuth').classList.toggle('hidden', signed && currentRole === 'admin');
-  $('#adminArea').classList.toggle('hidden', !(signed && currentRole === 'admin'));
+  $('#customerAuth').classList.toggle('hidden', signed && currentRole === 'customer'); $('#bookingForm').classList.toggle('hidden', !(signed && currentRole === 'customer')); $('#customerLogout').classList.toggle('hidden', !(signed && currentRole === 'customer'));
+  $('#driverAuth').classList.toggle('hidden', signed && currentRole === 'driver'); $('#driverArea').classList.toggle('hidden', !(signed && currentRole === 'driver')); $('#driverLogout').classList.toggle('hidden', !(signed && currentRole === 'driver'));
+  $('#adminAuth').classList.toggle('hidden', signed && currentRole === 'admin'); $('#adminArea').classList.toggle('hidden', !(signed && currentRole === 'admin'));
 }
-
-function selectedLanguages() {
-  return [...$('#driverLanguages').selectedOptions].map(o => o.value);
-}
-
-function selectedProfileLanguages() {
-  return [...$('#driverLanguagesProfile').selectedOptions].map(o => o.value);
-}
-
-function setSelected(select, values) {
-  const list = Array.isArray(values) ? values : [];
-  [...select.options].forEach(o => { o.selected = list.includes(o.value); });
-}
+function selectedLanguages() { return [...$('#driverLanguages').selectedOptions].map(o => o.value); }
+function selectedProfileLanguages() { return [...$('#driverLanguagesProfile').selectedOptions].map(o => o.value); }
+function setSelected(select, values) { const list = Array.isArray(values) ? values : []; [...select.options].forEach(o => { o.selected = list.includes(o.value); }); }
 
 function loadDriverProfileUI() {
-  if (!driverProfile) return;
-  $('#driverVehicleProfile').value = driverProfile.vehicleType || '';
-  setSelected($('#driverLanguagesProfile'), driverProfile.languages || []);
+  const p = driverPublicProfile || driverProfile || {};
+  $('#driverNameProfile').value = p.displayName || '';
+  $('#driverVehicleProfile').value = p.vehicleType || '';
+  $('#driverPlateProfile').value = p.plateNumber || '';
+  setSelected($('#driverLanguagesProfile'), p.languages || driverProfile?.languages || []);
+  renderDriverPhotoPreview(p);
+}
+function renderDriverPhotoPreview(p) {
+  const items = [];
+  if (p.selfieDataUrl) items.push(`<div><img src="${p.selfieDataUrl}" alt="Driver selfie"><small>Driver photo</small></div>`);
+  if (p.carPhotoDataUrl) items.push(`<div><img src="${p.carPhotoDataUrl}" alt="Driver car"><small>Vehicle photo</small></div>`);
+  $('#driverPhotoPreview').innerHTML = items.length ? items.join('') : '<p class="muted">No driver photos uploaded yet.</p>';
+}
+
+function normalizePlate(v) { return String(v || '').trim().toUpperCase(); }
+function validPlate(v) { return normalizePlate(v).length >= 2; }
+
+async function compressImage(file, maxDimension = 1000, maxBytes = 220000) {
+  if (!file || !file.type.startsWith('image/')) throw new Error('Please choose an image file.');
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement('canvas'); canvas.width = Math.max(1, Math.round(bitmap.width * scale)); canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  const ctx = canvas.getContext('2d'); ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height); bitmap.close();
+  for (const quality of [0.78, 0.68, 0.58, 0.48, 0.38]) {
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
+    if (!blob) continue;
+    if (blob.size <= maxBytes) return await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = () => reject(new Error('Could not read compressed image.')); reader.readAsDataURL(blob); });
+  }
+  throw new Error('Image is still too large after compression. Please choose a smaller photo.');
 }
 
 async function signUp(role, email, password) {
   if (!firebaseReady) return alert('Firebase is not connected.');
-  email = (email || '').trim();
-  if (!email || !password) return alert('Enter email and password.');
-  if (password.length < 6) return alert('Password must be at least 6 characters.');
+  email = (email || '').trim(); if (!email || !password) return alert('Enter email and password.'); if (password.length < 6) return alert('Password must be at least 6 characters.');
   try {
-    if (role === 'driver' && !VEHICLES.includes($('#driverVehicle').value)) return alert('Please select your vehicle.');
+    if (role !== 'driver') { const result = await window.FB.createUserWithEmailAndPassword(auth, email, password); await window.FB.setDoc(window.FB.doc(db, 'users', result.user.uid), { email, role, createdAt: window.FB.serverTimestamp() }); alert('Customer account created.'); return; }
+    const displayName = $('#driverName').value.trim(), vehicleType = $('#driverVehicle').value, plateNumber = normalizePlate($('#driverPlate').value);
+    const selfieFile = $('#driverSelfie').files[0], carFile = $('#driverCarPhoto').files[0];
+    if (!displayName) return alert('Please enter your driver name.'); if (!VEHICLES.includes(vehicleType)) return alert('Please select your vehicle.'); if (!validPlate(plateNumber)) return alert('Please enter your car plate number.'); if (!selfieFile || !carFile) return alert('Please upload both your selfie and car photo.');
+    const [selfieDataUrl, carPhotoDataUrl] = await Promise.all([compressImage(selfieFile, 700, 220000), compressImage(carFile, 1000, 220000)]);
     const result = await window.FB.createUserWithEmailAndPassword(auth, email, password);
-    const profile = { email, role, createdAt: window.FB.serverTimestamp() };
-    if (role === 'driver') {
-      profile.languages = selectedLanguages();
-      profile.vehicleType = $('#driverVehicle').value;
-    }
-    await window.FB.setDoc(window.FB.doc(db, 'users', result.user.uid), profile);
-    alert('Account created.');
-  } catch (e) { alert(e.message); }
+    const languages = selectedLanguages();
+    await window.FB.setDoc(window.FB.doc(db, 'users', result.user.uid), { email, role, displayName, vehicleType, plateNumber, languages, createdAt: window.FB.serverTimestamp() });
+    await window.FB.setDoc(window.FB.doc(db, 'driverPublicProfiles', result.user.uid), { driverUid: result.user.uid, displayName, vehicleType, plateNumber, languages, selfieDataUrl, carPhotoDataUrl, updatedAt: window.FB.serverTimestamp() });
+    alert('Driver account created. Your profile is ready for customer verification.');
+  } catch (e) { console.error(e); alert(e.message); }
 }
 
 async function signIn(expectedRole, email, password) {
-  if (!firebaseReady) return alert('Firebase is not connected.');
-  email = (email || '').trim();
-  if (!email || !password) return alert('Enter email and password.');
-  try {
-    const result = await window.FB.signInWithEmailAndPassword(auth, email, password);
-    const snap = await window.FB.getDoc(window.FB.doc(db, 'users', result.user.uid));
-    const actualRole = snap.exists() ? snap.data().role : null;
-    if (actualRole !== expectedRole) {
-      await window.FB.signOut(auth);
-      alert(`This account is registered as ${actualRole || 'unknown'}, not ${expectedRole}.`);
-    }
-  } catch (e) { alert(e.message); }
+  if (!firebaseReady) return alert('Firebase is not connected.'); email = (email || '').trim(); if (!email || !password) return alert('Enter email and password.');
+  try { const result = await window.FB.signInWithEmailAndPassword(auth, email, password); const snap = await window.FB.getDoc(window.FB.doc(db, 'users', result.user.uid)); const actualRole = snap.exists() ? snap.data().role : null; if (actualRole !== expectedRole) { await window.FB.signOut(auth); alert(`This account is registered as ${actualRole || 'unknown'}, not ${expectedRole}.`); } }
+  catch (e) { alert(e.message); }
 }
 
 async function saveDriverProfile() {
   if (!currentUser || currentRole !== 'driver') return alert('Please sign in as a driver first.');
-  const vehicleType = $('#driverVehicleProfile').value;
-  if (!VEHICLES.includes(vehicleType)) return alert('Please select your vehicle.');
-  const languages = selectedProfileLanguages();
-  const button = $('#saveDriverProfile');
-  button.disabled = true; button.textContent = 'Saving...';
-  $('#driverProfileMessage').textContent = '';
+  const displayName = $('#driverNameProfile').value.trim(), vehicleType = $('#driverVehicleProfile').value, plateNumber = normalizePlate($('#driverPlateProfile').value);
+  if (!displayName) return alert('Please enter your driver name.'); if (!VEHICLES.includes(vehicleType)) return alert('Please select your vehicle.'); if (!validPlate(plateNumber)) return alert('Please enter your car plate number.');
+  const button = $('#saveDriverProfile'); button.disabled = true; button.textContent = 'Saving...'; $('#driverProfileMessage').textContent = '';
   try {
-    await window.FB.setDoc(window.FB.doc(db, 'users', currentUser.uid), { vehicleType, languages }, { merge: true });
-    driverProfile = { ...(driverProfile || {}), vehicleType, languages };
-    $('#driverProfileMessage').textContent = '✓ Driver profile saved. Vehicle matching is now active.';
-    renderJobs();
-  } catch (e) {
-    $('#driverProfileMessage').textContent = '✕ Save failed: ' + (e.code || 'error') + ' — ' + e.message;
-  } finally {
-    button.disabled = false; button.textContent = 'Save driver profile';
-  }
+    let selfieDataUrl = driverPublicProfile?.selfieDataUrl || '', carPhotoDataUrl = driverPublicProfile?.carPhotoDataUrl || '';
+    const selfieFile = $('#driverSelfieProfile').files[0], carFile = $('#driverCarPhotoProfile').files[0];
+    if (selfieFile) selfieDataUrl = await compressImage(selfieFile, 700, 220000);
+    if (carFile) carPhotoDataUrl = await compressImage(carFile, 1000, 220000);
+    if (!selfieDataUrl || !carPhotoDataUrl) return alert('Please upload both your selfie and car photo before saving your profile.');
+    const languages = selectedProfileLanguages();
+    await window.FB.setDoc(window.FB.doc(db, 'users', currentUser.uid), { displayName, vehicleType, plateNumber, languages }, { merge: true });
+    await window.FB.setDoc(window.FB.doc(db, 'driverPublicProfiles', currentUser.uid), { driverUid: currentUser.uid, displayName, vehicleType, plateNumber, languages, selfieDataUrl, carPhotoDataUrl, updatedAt: window.FB.serverTimestamp() }, { merge: true });
+    driverProfile = { ...(driverProfile || {}), displayName, vehicleType, plateNumber, languages }; driverPublicProfile = { ...(driverPublicProfile || {}), displayName, vehicleType, plateNumber, languages, selfieDataUrl, carPhotoDataUrl };
+    $('#driverSelfieProfile').value = ''; $('#driverCarPhotoProfile').value = ''; renderDriverPhotoPreview(driverPublicProfile); renderJobs();
+    $('#driverProfileMessage').textContent = '✓ Driver profile saved. Customers will see your name, vehicle, plate and photos after assignment.';
+  } catch (e) { $('#driverProfileMessage').textContent = '✕ Save failed: ' + (e.code || 'error') + ' — ' + e.message; }
+  finally { button.disabled = false; button.textContent = 'Save driver profile'; }
 }
 
-async function logout() {
-  if (firebaseReady && auth) await window.FB.signOut(auth);
-  stopListeners(); currentUser = null; currentRole = null; driverProfile = null; bookings = []; schedules = []; driverAvailable = []; driverAccepted = [];
-  updateAuthUI(); render();
-}
-
+async function logout() { if (firebaseReady && auth) await window.FB.signOut(auth); stopListeners(); currentUser = null; currentRole = null; driverProfile = null; driverPublicProfile = null; bookings = []; schedules = []; driverAvailable = []; driverAccepted = []; updateAuthUI(); render(); }
 $('#customerSignup').onclick = () => signUp('customer', $('#customerEmail').value, $('#customerPassword').value);
 $('#customerLogin').onclick = () => signIn('customer', $('#customerEmail').value, $('#customerPassword').value);
 $('#driverSignup').onclick = () => signUp('driver', $('#driverEmail').value, $('#driverPassword').value);
 $('#driverLogin').onclick = () => signIn('driver', $('#driverEmail').value, $('#driverPassword').value);
 $('#adminLogin').onclick = () => signIn('admin', $('#adminEmail').value, $('#adminPassword').value);
-$('#customerLogout').onclick = logout;
-$('#driverLogout').onclick = logout;
-$('#saveDriverProfile').onclick = saveDriverProfile;
+$('#customerLogout').onclick = logout; $('#driverLogout').onclick = logout; $('#saveDriverProfile').onclick = saveDriverProfile;
 
 async function addBooking(booking) {
-  if (firebaseReady) {
-    if (!currentUser || currentRole !== 'customer') throw new Error('Please sign in as a customer.');
-    await window.FB.addDoc(window.FB.collection(db, 'bookings'), { ...booking, customerUid: currentUser.uid, createdAt: window.FB.serverTimestamp() });
-  } else {
-    bookings.unshift(booking); localStorage.setItem(KEY, JSON.stringify(bookings)); render();
-  }
+  if (firebaseReady) { if (!currentUser || currentRole !== 'customer') throw new Error('Please sign in as a customer.'); await window.FB.addDoc(window.FB.collection(db, 'bookings'), { ...booking, customerUid: currentUser.uid, createdAt: window.FB.serverTimestamp() }); }
+  else { bookings.unshift(booking); localStorage.setItem(KEY, JSON.stringify(bookings)); render(); }
 }
-
 $('#bookingForm').addEventListener('submit', async e => {
-  e.preventDefault();
-  const f = new FormData(e.target);
-  const vehicleType = f.get('vehicleType');
-  if (!VEHICLES.includes(vehicleType)) return alert('Please select a preferred vehicle.');
+  e.preventDefault(); const f = new FormData(e.target), vehicleType = f.get('vehicleType'); if (!VEHICLES.includes(vehicleType)) return alert('Please select a preferred vehicle.');
   const booking = { id: 'AT-' + Date.now().toString().slice(-6), name: f.get('name'), phone: f.get('phone'), pickup: f.get('pickup'), destination: f.get('destination'), date: f.get('date'), time: f.get('time'), passengers: Number(f.get('passengers')), luggage: Number(f.get('luggage') || 0), language: f.get('language'), vehicleType, status: 'Available', driver: '', driverUid: '' };
-  try { await addBooking(booking); e.target.reset(); $('#customerResult').innerHTML = `<div class="booking success"><h3>Booking placed ✓</h3><p>Your booking ID is <b>${escapeHtml(booking.id)}</b>.</p><p>Vehicle: <b>${escapeHtml(booking.vehicleType)}</b></p><span class="badge">Available</span></div>`; }
-  catch (err) { alert('Could not save booking: ' + err.message); }
+  try { await addBooking(booking); e.target.reset(); $('#customerResult').innerHTML = `<div class="booking success"><h3>Booking placed ✓</h3><p>Your booking ID is <b>${escapeHtml(booking.id)}</b>.</p><p>Vehicle: <b>${escapeHtml(booking.vehicleType)}</b></p><span class="badge">Available</span></div>`; } catch (err) { alert('Could not save booking: ' + err.message); }
 });
 
-function timeToMinutes(t) {
-  const [h, m] = String(t || '').split(':').map(Number);
-  return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : -1;
-}
-
-function overlapsSchedule(booking, schedule) {
-  if (!schedule || schedule.date !== booking.date) return false;
-  const bt = timeToMinutes(booking.time);
-  const from = timeToMinutes(schedule.from);
-  const to = timeToMinutes(schedule.to);
-  return bt >= from && bt < to;
-}
-
-function languageMatches(booking) {
-  if (!booking.language || booking.language === 'Any') return true;
-  const languages = Array.isArray(driverProfile?.languages) ? driverProfile.languages : [];
-  if (!languages.length) return true;
-  return languages.includes(booking.language);
-}
-
-function vehicleMatches(booking) {
-  const requested = booking.vehicleType;
-  const driverVehicle = driverProfile?.vehicleType;
-  return VEHICLES.includes(requested) && driverVehicle === requested;
-}
-
-function hasAcceptedConflict(booking) {
-  return driverAccepted.some(b => b.status === 'Accepted' && b.date === booking.date && Math.abs(timeToMinutes(b.time) - timeToMinutes(booking.time)) < 120);
-}
-
-function matchReasons(booking) {
-  return [`vehicle: ${booking.vehicleType}`, booking.language && booking.language !== 'Any' ? 'language match' : 'language flexible', 'schedule clear', 'no nearby accepted job'];
-}
-
-function canDriverTake(booking) {
-  return vehicleMatches(booking) && languageMatches(booking) && !schedules.some(s => overlapsSchedule(booking, s)) && !hasAcceptedConflict(booking);
-}
+function timeToMinutes(t) { const [h,m] = String(t || '').split(':').map(Number); return Number.isFinite(h) && Number.isFinite(m) ? h*60+m : -1; }
+function overlapsSchedule(booking, schedule) { if (!schedule || schedule.date !== booking.date) return false; const bt=timeToMinutes(booking.time), from=timeToMinutes(schedule.from), to=timeToMinutes(schedule.to); return bt>=from && bt<to; }
+function languageMatches(booking) { if (!booking.language || booking.language === 'Any') return true; const languages=Array.isArray(driverProfile?.languages)?driverProfile.languages:[]; return !languages.length || languages.includes(booking.language); }
+function vehicleMatches(booking) { return VEHICLES.includes(booking.vehicleType) && driverProfile?.vehicleType === booking.vehicleType; }
+function hasAcceptedConflict(booking) { return driverAccepted.some(b => b.status === 'Accepted' && b.date === booking.date && Math.abs(timeToMinutes(b.time)-timeToMinutes(booking.time))<120); }
+function matchReasons(booking) { return [`vehicle: ${booking.vehicleType}`, booking.language && booking.language!=='Any'?'language match':'language flexible', 'schedule clear', 'no nearby accepted job']; }
+function canDriverTake(booking) { return vehicleMatches(booking) && languageMatches(booking) && !schedules.some(s=>overlapsSchedule(booking,s)) && !hasAcceptedConflict(booking); }
 
 async function acceptJob(id) {
-  const booking = bookings.find(x => x.docId === id || x.id === id);
-  if (!booking || !currentUser || currentRole !== 'driver') return alert('Please sign in as a driver first.');
-  if (!driverProfile?.vehicleType) return alert('Please set your vehicle in My driver profile before accepting jobs.');
-  if (booking.status !== 'Available') return alert('This job has already been taken.');
-  if (!canDriverTake(booking)) return alert('This job no longer matches your vehicle, language, private schedule or existing job schedule.');
-  try {
-    if (firebaseReady) {
-      await window.FB.updateDoc(window.FB.doc(db, 'bookings', booking.docId), { status: 'Accepted', driver: currentUser.email, driverUid: currentUser.uid, acceptedAt: window.FB.serverTimestamp() });
-    } else {
-      booking.status = 'Accepted'; booking.driver = 'Demo Driver'; localStorage.setItem(KEY, JSON.stringify(bookings)); render();
-    }
-    alert('Job accepted and customer will see the assigned driver.');
-  } catch (e) { alert('Could not accept job (' + (e.code || 'error') + '): ' + e.message); }
+  const booking=bookings.find(x=>x.docId===id||x.id===id); if(!booking||!currentUser||currentRole!=='driver') return alert('Please sign in as a driver first.');
+  if(!driverProfile?.vehicleType||!validPlate(driverProfile?.plateNumber)) return alert('Please complete your driver profile, including vehicle and car plate number.');
+  if(booking.status!=='Available') return alert('This job has already been taken.'); if(!canDriverTake(booking)) return alert('This job no longer matches your vehicle, language, private schedule or existing job schedule.');
+  try { await window.FB.updateDoc(window.FB.doc(db,'bookings',booking.docId), { status:'Accepted', driver:driverProfile.displayName||currentUser.email, driverUid:currentUser.uid, driverVehicleType:driverProfile.vehicleType, driverPlateNumber:driverProfile.plateNumber, acceptedAt:window.FB.serverTimestamp() }); alert('Job accepted. The customer can now see your driver and vehicle details.'); }
+  catch(e){ alert('Could not accept job ('+(e.code||'error')+'): '+e.message); }
 }
-window.acceptJob = acceptJob;
+window.acceptJob=acceptJob;
 
 async function addUnavailable() {
-  const date = $('#unavailableDate').value;
-  const from = $('#unavailableFrom').value;
-  const to = $('#unavailableTo').value;
-  if (!currentUser || currentRole !== 'driver') return alert('Please sign in as a driver first.');
-  if (!date || !from || !to) return alert('Please select a date, From time and To time.');
-  if (from >= to) return alert('The To time must be later than the From time.');
-  const duplicate = schedules.some(s => s.date === date && s.from === from && s.to === to);
-  if (duplicate) { $('#scheduleMessage').textContent = 'Already added — duplicate schedule prevented.'; return; }
-  const schedule = { date, from, to, driverUid: currentUser.uid };
-  const button = $('#addUnavailable');
-  button.disabled = true; button.textContent = 'Saving...'; $('#scheduleMessage').textContent = '';
-  try {
-    if (firebaseReady) {
-      const safeId = encodeURIComponent(`${currentUser.uid}_${date}_${from}_${to}`);
-      const ref = window.FB.doc(db, 'driverSchedules', safeId);
-      const existing = await window.FB.getDoc(ref);
-      if (existing.exists()) throw new Error('That exact unavailable time already exists.');
-      await window.FB.setDoc(ref, { ...schedule, createdAt: window.FB.serverTimestamp() });
-    } else {
-      schedule.id = 'S-' + Date.now(); schedules.unshift(schedule); localStorage.setItem(SKEY, JSON.stringify(schedules));
-    }
-    $('#scheduleMessage').textContent = '✓ Unavailable time saved. Duplicate entries are blocked.';
-    $('#unavailableDate').value = ''; $('#unavailableFrom').value = ''; $('#unavailableTo').value = '';
-  } catch (e) {
-    console.error(e); $('#scheduleMessage').textContent = '✕ Save failed: ' + (e.code || 'error') + ' — ' + e.message;
-    alert('Could not save unavailable time.\n\n' + (e.code || 'error') + ': ' + e.message);
-  } finally { button.disabled = false; button.textContent = 'Add unavailable time'; }
+  const date=$('#unavailableDate').value, from=$('#unavailableFrom').value, to=$('#unavailableTo').value; if(!currentUser||currentRole!=='driver') return alert('Please sign in as a driver first.'); if(!date||!from||!to) return alert('Please select a date, From time and To time.'); if(from>=to) return alert('The To time must be later than the From time.');
+  if(schedules.some(s=>s.date===date&&s.from===from&&s.to===to)){ $('#scheduleMessage').textContent='Already added — duplicate schedule prevented.'; return; }
+  const schedule={date,from,to,driverUid:currentUser.uid}, button=$('#addUnavailable'); button.disabled=true; button.textContent='Saving...'; $('#scheduleMessage').textContent='';
+  try { const safeId=encodeURIComponent(`${currentUser.uid}_${date}_${from}_${to}`), ref=window.FB.doc(db,'driverSchedules',safeId), existing=await window.FB.getDoc(ref); if(existing.exists()) throw new Error('That exact unavailable time already exists.'); await window.FB.setDoc(ref,{...schedule,createdAt:window.FB.serverTimestamp()}); $('#scheduleMessage').textContent='✓ Unavailable time saved. Duplicate entries are blocked.'; $('#unavailableDate').value=''; $('#unavailableFrom').value=''; $('#unavailableTo').value=''; }
+  catch(e){ console.error(e); $('#scheduleMessage').textContent='✕ Save failed: '+(e.code||'error')+' — '+e.message; alert('Could not save unavailable time.\n\n'+(e.code||'error')+': '+e.message); }
+  finally{ button.disabled=false; button.textContent='Add unavailable time'; }
 }
-$('#addUnavailable').onclick = addUnavailable;
+$('#addUnavailable').onclick=addUnavailable;
+async function cleanupDuplicateSchedules(list){ if(!firebaseReady||currentRole!=='driver'||!currentUser||list.length<2)return; const seen=new Map(),duplicates=[]; for(const s of list){const key=`${s.date}|${s.from}|${s.to}`; if(seen.has(key))duplicates.push(s.docId); else seen.set(key,s.docId);} if(!duplicates.length)return; try{await Promise.all(duplicates.map(id=>window.FB.deleteDoc(window.FB.doc(db,'driverSchedules',id)))); $('#scheduleMessage').textContent=`✓ Removed ${duplicates.length} duplicate schedule${duplicates.length===1?'':'s'}.`;}catch(e){console.error(e);} }
+async function deleteSchedule(id){if(!currentUser||currentRole!=='driver')return;if(!confirm('Remove this unavailable time?'))return;try{await window.FB.deleteDoc(window.FB.doc(db,'driverSchedules',id));}catch(e){alert('Could not remove schedule: '+e.message);}}
+window.deleteSchedule=deleteSchedule;
+function renderSchedules(){ $('#scheduleList').innerHTML=schedules.length?schedules.sort((a,b)=>`${a.date}${a.from}`.localeCompare(`${b.date}${b.from}`)).map(s=>`<div class="schedule"><b>${escapeHtml(s.date)}</b><span>${escapeHtml(s.from)}–${escapeHtml(s.to)} <button class="mini-delete" onclick="deleteSchedule('${escapeHtml(s.docId)}')" type="button">×</button></span></div>`).join(''):'<p class="muted">No unavailable times added.</p>'; }
+function renderJobs(){ if(currentRole!=='driver'){ $('#driverJobs').innerHTML=''; return; } const available=driverAvailable.filter(b=>b.status==='Available'&&canDriverTake(b)); if(!available.length){const vehicle=driverProfile?.vehicleType; $('#driverJobs').innerHTML=vehicle?'<p class="muted">No jobs currently matching your vehicle, language, private schedule and existing jobs.</p>':'<p class="muted">Complete your driver profile to see matching jobs.</p>';return;} $('#driverJobs').innerHTML=available.map(b=>`<div class="booking"><h3>${escapeHtml(b.pickup)} → ${escapeHtml(b.destination)}</h3><p>${escapeHtml(b.date)} at ${escapeHtml(b.time)} • ${escapeHtml(String(b.passengers))} passenger(s) • ${escapeHtml(b.language)}</p><p>Vehicle: <b>${escapeHtml(b.vehicleType||'Not specified')}</b></p><small>${escapeHtml(b.name)} • ${escapeHtml(b.id)} • ${escapeHtml(matchReasons(b).join(' • '))}</small><button class="accept" onclick="acceptJob('${escapeHtml(b.docId)}')">Accept job</button></div>`).join(''); }
 
-async function cleanupDuplicateSchedules(list) {
-  if (!firebaseReady || currentRole !== 'driver' || !currentUser || list.length < 2) return;
-  const seen = new Map(); const duplicates = [];
-  for (const s of list) {
-    const key = `${s.date}|${s.from}|${s.to}`;
-    if (seen.has(key)) duplicates.push(s.docId); else seen.set(key, s.docId);
-  }
-  if (!duplicates.length) return;
-  try {
-    await Promise.all(duplicates.map(id => window.FB.deleteDoc(window.FB.doc(db, 'driverSchedules', id))));
-    $('#scheduleMessage').textContent = `✓ Removed ${duplicates.length} duplicate schedule${duplicates.length === 1 ? '' : 's'}.`;
-  } catch (e) { console.error('Duplicate cleanup failed', e); }
-}
+async function getPublicDriverProfile(uid){ if(!uid)return null; if(publicProfileCache.has(uid))return publicProfileCache.get(uid); try{const snap=await window.FB.getDoc(window.FB.doc(db,'driverPublicProfiles',uid)); const p=snap.exists()?snap.data():null; publicProfileCache.set(uid,p); return p;}catch(e){console.error('Driver profile read failed',e);return null;} }
+async function refreshCustomerDriverProfiles(){ if(currentRole!=='customer')return; const ids=[...new Set(bookings.filter(b=>b.driverUid).map(b=>b.driverUid))]; await Promise.all(ids.map(getPublicDriverProfile)); renderCustomerBookings(true); }
+function driverCard(b,p){ if(!p)return b.driver?`<div class="driver-card"><b>Driver assigned:</b> ${escapeHtml(b.driver)}<br><b>Vehicle:</b> ${escapeHtml(b.driverVehicleType||b.vehicleType||'')}</div>`:''; return `<div class="driver-card"><div class="photo-grid"><div><img src="${p.selfieDataUrl||''}" alt="Assigned driver"><small>Driver</small></div><div><img src="${p.carPhotoDataUrl||''}" alt="Assigned vehicle"><small>Vehicle</small></div></div><p><b>${escapeHtml(p.displayName||b.driver||'Assigned driver')}</b><br>Vehicle: ${escapeHtml(p.vehicleType||b.vehicleType||'')}<br>Plate: <b>${escapeHtml(p.plateNumber||b.driverPlateNumber||'')}</b></p></div>`; }
+function renderCustomerBookings(skipRefresh=false){ if(currentRole!=='customer'){ $('#customerBookings').innerHTML=''; return; } const list=[...bookings].sort((a,b)=>String(b.date+b.time).localeCompare(String(a.date+a.time))); $('#customerBookings').innerHTML=list.length?`<h3>Your bookings</h3>`+list.map(b=>`<div class="booking"><h3>${escapeHtml(b.id)} <span class="badge">${escapeHtml(b.status)}</span></h3><p>${escapeHtml(b.pickup)} → ${escapeHtml(b.destination)}</p><p>${escapeHtml(b.date)} ${escapeHtml(b.time)} • ${escapeHtml(b.language)} • Vehicle: <b>${escapeHtml(b.vehicleType||'Not specified')}</b></p>${b.status==='Accepted'?driverCard(b,publicProfileCache.get(b.driverUid)): '<small>Waiting for a matched driver</small>'}</div>`).join(''):'<p class="muted">No bookings yet.</p>'; if(!skipRefresh&&list.some(b=>b.driverUid))refreshCustomerDriverProfiles(); }
 
-async function deleteSchedule(id) {
-  if (!currentUser || currentRole !== 'driver') return;
-  if (!confirm('Remove this unavailable time?')) return;
-  try {
-    if (firebaseReady) await window.FB.deleteDoc(window.FB.doc(db, 'driverSchedules', id));
-    else { schedules = schedules.filter(s => (s.docId || s.id) !== id); localStorage.setItem(SKEY, JSON.stringify(schedules)); renderSchedules(); renderJobs(); }
-  } catch (e) { alert('Could not remove schedule: ' + e.message); }
-}
-window.deleteSchedule = deleteSchedule;
-
-function renderSchedules() {
-  $('#scheduleList').innerHTML = schedules.length ? schedules.sort((a,b) => `${a.date}${a.from}`.localeCompare(`${b.date}${b.from}`)).map(s => `<div class="schedule"><b>${escapeHtml(s.date)}</b><span>${escapeHtml(s.from)}–${escapeHtml(s.to)} <button class="mini-delete" onclick="deleteSchedule('${escapeHtml(s.docId || s.id)}')" type="button">×</button></span></div>`).join('') : '<p class="muted">No unavailable times added.</p>';
-}
-
-function renderJobs() {
-  if (currentRole !== 'driver') { $('#driverJobs').innerHTML = ''; return; }
-  const available = driverAvailable.filter(b => b.status === 'Available' && canDriverTake(b));
-  if (!available.length) {
-    const vehicle = driverProfile?.vehicleType;
-    $('#driverJobs').innerHTML = vehicle ? '<p class="muted">No jobs currently matching your vehicle, language, private schedule and existing jobs.</p>' : '<p class="muted">Set your vehicle in My driver profile to see matching jobs.</p>';
-    return;
-  }
-  $('#driverJobs').innerHTML = available.map(b => `<div class="booking"><h3>${escapeHtml(b.pickup)} → ${escapeHtml(b.destination)}</h3><p>${escapeHtml(b.date)} at ${escapeHtml(b.time)} • ${escapeHtml(String(b.passengers))} passenger(s) • ${escapeHtml(b.language)}</p><p>Vehicle: <b>${escapeHtml(b.vehicleType || 'Not specified')}</b></p><small>${escapeHtml(b.name)} • ${escapeHtml(b.id)} • ${escapeHtml(matchReasons(b).join(' • '))}</small><button class="accept" onclick="acceptJob('${escapeHtml(b.docId)}')">Accept job</button></div>`).join('');
-}
-
-function renderCustomerBookings() {
-  if (currentRole !== 'customer') { $('#customerBookings').innerHTML = ''; return; }
-  const list = [...bookings].sort((a,b) => String(b.date + b.time).localeCompare(String(a.date + a.time)));
-  $('#customerBookings').innerHTML = list.length ? `<h3>Your bookings</h3>` + list.map(b => `<div class="booking"><h3>${escapeHtml(b.id)} <span class="badge">${escapeHtml(b.status)}</span></h3><p>${escapeHtml(b.pickup)} → ${escapeHtml(b.destination)}</p><p>${escapeHtml(b.date)} ${escapeHtml(b.time)} • ${escapeHtml(b.language)} • Vehicle: <b>${escapeHtml(b.vehicleType || 'Not specified')}</b></p><small>${b.driver ? `Driver assigned: ${escapeHtml(b.driver)}` : 'Waiting for a matched driver'}</small></div>`).join('') : '<p class="muted">No bookings yet.</p>';
-}
-
-function render() {
-  renderSchedules(); renderJobs(); renderCustomerBookings();
-  const total = bookings.length, availableCount = bookings.filter(b => b.status === 'Available').length, accepted = bookings.filter(b => b.status === 'Accepted').length, completed = bookings.filter(b => b.status === 'Completed').length;
-  $('#adminStats').innerHTML = `<div class="stat"><b>${total}</b><small>Total</small></div><div class="stat"><b>${availableCount}</b><small>Available</small></div><div class="stat"><b>${accepted}</b><small>Accepted</small></div><div class="stat"><b>${completed}</b><small>Completed</small></div>`;
-  const list = filter === 'All' ? bookings : bookings.filter(b => b.status === filter);
-  $('#adminBookings').innerHTML = list.length ? list.map(b => `<div class="booking"><h3>${escapeHtml(b.id)} <span class="badge">${escapeHtml(b.status)}</span></h3><p><b>${escapeHtml(b.pickup)}</b> → ${escapeHtml(b.destination)}</p><p>${escapeHtml(b.date)} ${escapeHtml(b.time)} • ${escapeHtml(b.name)} • ${escapeHtml(b.phone)}</p><p>Vehicle: <b>${escapeHtml(b.vehicleType || 'Not specified')}</b> • Language: ${escapeHtml(b.language || 'Any')}</p><small>${b.driver ? `Driver: ${escapeHtml(b.driver)}` : 'No driver yet'}</small>${b.status === 'Accepted' && currentRole === 'admin' ? `<button class="secondary complete" onclick="completeJob('${escapeHtml(b.docId)}')">Mark completed</button>` : ''}</div>`).join('') : '<p class="muted">No bookings.</p>';
-}
-
-window.completeJob = async id => {
-  const booking = bookings.find(x => x.docId === id || x.id === id);
-  if (!booking || !firebaseReady || currentRole !== 'admin') return;
-  try { await window.FB.updateDoc(window.FB.doc(db, 'bookings', booking.docId), { status: 'Completed', completedAt: window.FB.serverTimestamp() }); }
-  catch (e) { alert('Could not complete booking: ' + e.message); }
-};
-
-$$('.filter').forEach(x => x.onclick = () => { $$('.filter').forEach(y => y.classList.remove('active')); x.classList.add('active'); filter = x.dataset.filter; render(); });
-$('#clearAll').onclick = () => { if (firebaseReady) return alert('Cloud data is protected.'); if (confirm('Clear all demo bookings?')) { bookings = []; localStorage.setItem(KEY, '[]'); render(); } };
-
-function escapeHtml(value) { return String(value ?? '').replace(/[&<>'"]/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char])); }
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('./service-worker.js');
-let deferredPrompt;
-window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; $('#installBtn').classList.remove('hidden'); });
-$('#installBtn').onclick = async () => { if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt = null; } };
-
-initFirebase();
-updateAuthUI();
-render();
+function render(){ renderSchedules(); renderJobs(); renderCustomerBookings(); const total=bookings.length,availableCount=bookings.filter(b=>b.status==='Available').length,accepted=bookings.filter(b=>b.status==='Accepted').length,completed=bookings.filter(b=>b.status==='Completed').length; $('#adminStats').innerHTML=`<div class="stat"><b>${total}</b><small>Total</small></div><div class="stat"><b>${availableCount}</b><small>Available</small></div><div class="stat"><b>${accepted}</b><small>Accepted</small></div><div class="stat"><b>${completed}</b><small>Completed</small></div>`; const list=filter==='All'?bookings:bookings.filter(b=>b.status===filter); $('#adminBookings').innerHTML=list.length?list.map(b=>`<div class="booking"><h3>${escapeHtml(b.id)} <span class="badge">${escapeHtml(b.status)}</span></h3><p><b>${escapeHtml(b.pickup)}</b> → ${escapeHtml(b.destination)}</p><p>${escapeHtml(b.date)} ${escapeHtml(b.time)} • ${escapeHtml(b.name)} • ${escapeHtml(b.phone)}</p><p>Vehicle: <b>${escapeHtml(b.vehicleType||'Not specified')}</b> • Language: ${escapeHtml(b.language||'Any')}</p><small>${b.driver?`Driver: ${escapeHtml(b.driver)} • Plate: ${escapeHtml(b.driverPlateNumber||'')}`:'No driver yet'}</small>${b.status==='Accepted'&&currentRole==='admin'?`<button class="secondary complete" onclick="completeJob('${escapeHtml(b.docId)}')">Mark completed</button>`:''}</div>`).join(''):'<p class="muted">No bookings.</p>'; }
+window.completeJob=async id=>{const booking=bookings.find(x=>x.docId===id||x.id===id);if(!booking||!firebaseReady||currentRole!=='admin')return;try{await window.FB.updateDoc(window.FB.doc(db,'bookings',booking.docId),{status:'Completed',completedAt:window.FB.serverTimestamp()});}catch(e){alert('Could not complete booking: '+e.message);}};
+$$('.filter').forEach(x=>x.onclick=()=>{$$('.filter').forEach(y=>y.classList.remove('active'));x.classList.add('active');filter=x.dataset.filter;render();});
+$('#clearAll').onclick=()=>alert('Cloud data is protected.');
+function escapeHtml(value){return String(value??'').replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));}
+if('serviceWorker'in navigator)navigator.serviceWorker.register('./service-worker.js');
+let deferredPrompt;window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;$('#installBtn').classList.remove('hidden');});$('#installBtn').onclick=async()=>{if(deferredPrompt){deferredPrompt.prompt();deferredPrompt=null;}};
+initFirebase(); updateAuthUI(); render();
