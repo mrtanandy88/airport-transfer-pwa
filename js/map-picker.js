@@ -16,7 +16,6 @@
     if(status)status.textContent='✓ Map pin saved. You can still edit the address above.';
   }
   function openPicker(target){
-    if(!window.currentRoleForMap || window.currentRoleForMap!=='customer') return;
     activeTarget=target; selected=null;
     const modal=$('#mapPickerModal'); modal.classList.remove('hidden'); modal.setAttribute('aria-hidden','false');
     $('#mapPickerTitle').textContent=target==='pickup'?'Pick pickup location':'Pick drop-off location';
