@@ -82,6 +82,8 @@ function handleCloudError(error) {
 function show(id) { $$('.screen').forEach(x => x.classList.remove('active')); $('#' + id).classList.add('active'); render(); updateAuthUI(); }
 $$('[data-go]').forEach(b => b.addEventListener('click', () => show(b.dataset.go)));
 function updateAuthUI() {
+  if(window.setMapCustomerRole) window.setMapCustomerRole(currentRole);
+
   const signed = !!currentUser;
   if (!firebaseReady) {
     $('#customerAuth').classList.add('hidden'); $('#bookingForm').classList.remove('hidden'); $('#driverAuth').classList.add('hidden'); $('#driverArea').classList.remove('hidden'); $('#adminAuth').classList.add('hidden'); $('#adminArea').classList.remove('hidden'); return;
