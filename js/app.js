@@ -361,27 +361,49 @@ window.completeJob=async id=>{const booking=bookings.find(x=>x.docId===id||x.id=
 $$('.filter').forEach(x=>x.onclick=()=>{$$('.filter').forEach(y=>y.classList.remove('active'));x.classList.add('active');filter=x.dataset.filter;render();});
 $('#clearAll').onclick=()=>alert('Cloud data is protected.');
 function escapeHtml(value){return String(value??'').replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));}
-function setPickupPin(lat,lng){
-  const latInput=$('#bookingForm input[name="pickupLat"]'),lngInput=$('#bookingForm input[name="pickupLng"]'),status=$('#pickupLocationStatus');
+async function reverseGeocodeCurrentLocation(lat,lng){
+  const url='https://api.bigdatacloud.net/data/reverse-geocode-client?latitude='+
+    encodeURIComponent(lat)+'&longitude='+encodeURIComponent(lng)+'&localityLanguage=en';
+  const response=await fetch(url);
+  if(!response.ok) throw new Error('Address lookup failed');
+  const data=await response.json();
+  const parts=[data.locality,data.city,data.principalSubdivision,data.countryName]
+    .filter((value,index,array)=>value && array.indexOf(value)===index);
+  return parts.join(', ');
+}
+function saveCurrentPickupLocation(lat,lng,address=''){
+  const latInput=$('#bookingForm input[name="pickupLat"]'),lngInput=$('#bookingForm input[name="pickupLng"]');
+  const input=$('#bookingForm input[name="pickup"]');
   if(latInput)latInput.value=Number(lat).toFixed(6);
   if(lngInput)lngInput.value=Number(lng).toFixed(6);
-  if(status)status.textContent='✓ Current location saved. Address lookup will follow when available.';
+  if(input && !String(input.value||'').trim()) input.value=address || 'Current location';
 }
 function locationErrorMessage(err){
   if(err?.code===1)return 'Location permission was denied. Please allow Location for your browser, then try again.';
   if(err?.code===2)return 'Your device could not determine its location. Turn on GPS/location services and try again.';
-  if(err?.code===3)return 'Location request timed out. Turn on GPS and try again, or use the map picker.';
-  return 'Could not get your current location. Please use the map picker or enter the address manually.';
+  if(err?.code===3)return 'Location request timed out. Turn on GPS and try again.';
+  return 'Could not get your current location. Please enter the pickup address manually.';
 }
-function useCurrentPickupLocation(){
+async function useCurrentPickupLocation(){
   const status=$('#pickupLocationStatus');
-  if(!window.isSecureContext){if(status)status.textContent='Location requires a secure connection (HTTPS).';return;}
-  if(!navigator.geolocation){if(status)status.textContent='This browser does not provide location services. Please use the map picker.';return;}
-  if(status)status.textContent='📍 Requesting your current location…';
+  if(!window.isSecureContext){if(status)status.textContent='Location requires HTTPS. Please open the GitHub Pages link in Chrome.';return;}
+  if(!navigator.geolocation){if(status)status.textContent='This browser does not provide location services. Please enter the pickup address manually.';return;}
+  if(status)status.textContent='📍 Getting your current location…';
   navigator.geolocation.getCurrentPosition(
-    pos=>{
-      setPickupPin(pos.coords.latitude,pos.coords.longitude);
-      if(status)status.textContent='✓ Current location saved. You can edit the address above.';
+    async pos=>{
+      const lat=pos.coords.latitude,lng=pos.coords.longitude;
+      saveCurrentPickupLocation(lat,lng);
+      if(status)status.textContent='✓ GPS location saved. Getting a readable location name…';
+      try{
+        const address=await reverseGeocodeCurrentLocation(lat,lng);
+        saveCurrentPickupLocation(lat,lng,address);
+        if(status)status.textContent=address
+          ? '✓ Current location saved: '+address
+          : '✓ Current location saved. You can edit the pickup location above.';
+      }catch(error){
+        console.warn('Reverse geocoding error:',error);
+        if(status)status.textContent='✓ GPS location saved. You can edit the pickup location above.';
+      }
     },
     err=>{
       if(status)status.textContent=locationErrorMessage(err);
