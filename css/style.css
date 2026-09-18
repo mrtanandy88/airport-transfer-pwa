@@ -6,3 +6,12 @@
 .datetime-preview::first-letter{font-weight:900}
 
 .trip-schedule{margin:14px 0;padding:15px 16px;border:2px solid #cbd5e1;border-radius:16px;background:#f8fafc;display:flex;flex-direction:column;gap:3px}.trip-schedule span{font-size:.78rem;font-weight:900;letter-spacing:.08em;color:#475569}.trip-schedule strong{font-size:1.12rem;line-height:1.4}.trip-schedule b{font-size:1.55rem;line-height:1.2}.trip-schedule.compact{margin:12px 0;padding:12px 14px}.trip-schedule.compact b{font-size:1.3rem}.driver-job-card .job-route h3{font-size:1.25rem;margin-bottom:2px}.driver-job-card .accept{font-size:1.05rem;font-weight:800;padding:13px 16px;margin-top:10px}.driver-job-card .flight-details{margin-top:14px}
+
+/* V9: keep trip schedule elements visually separated on small screens */
+.trip-schedule{display:block!important;margin:16px 0!important;padding:16px 18px!important}
+.trip-schedule span,.trip-schedule strong,.trip-schedule b{display:block!important;margin:0!important}
+.trip-schedule span{margin-bottom:6px!important}
+.trip-schedule strong{margin-bottom:2px!important;font-size:1.15rem!important;line-height:1.4!important}
+.trip-schedule b{font-size:1.55rem!important;line-height:1.3!important}
+.trip-schedule.compact{padding:14px 16px!important}
+.trip-schedule.compact b{font-size:1.35rem!important}
