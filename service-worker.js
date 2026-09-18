@@ -1,4 +1,4 @@
-const CACHE='airport-transfer-v22';
+const CACHE='airport-transfer-v23';
 const ASSETS=['./','./index.html','./manifest.json','./css/style.css','./js/app.js','./js/language-picker.js','./js/customer-driver-card.js','./js/driver-auth-ui.js','./js/firebase-config.js'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
