@@ -103,6 +103,36 @@
     });
   }
 
+  function useMapCurrentLocation(){
+    const hint=$('#mapPickerHint');
+    if(!window.isSecureContext){
+      if(hint)hint.textContent='Location requires HTTPS. Please open the GitHub Pages link in Chrome.';
+      return;
+    }
+    if(!navigator.geolocation){
+      if(hint)hint.textContent='This browser does not provide location services. You can still tap the map.';
+      return;
+    }
+    if(hint)hint.textContent='📍 Getting your current location…';
+    navigator.geolocation.getCurrentPosition(
+      pos=>{
+        const lat=pos.coords.latitude,lng=pos.coords.longitude;
+        map.setView([lat,lng],16);
+        choose(lat,lng);
+        if(hint)hint.textContent='✓ Current location found. Check the pin, then tap “Use this location”.';
+      },
+      err=>{
+        const msg=err.code===1?'Location permission was denied. Allow location access in your browser settings.'
+          :err.code===2?'Location could not be determined. Turn on GPS/location services.'
+          :err.code===3?'Location request timed out. Try again or tap the map manually.'
+          :'Could not get your current location. Tap the map manually.';
+        if(hint)hint.textContent=msg;
+        console.warn('Map geolocation error:',err);
+      },
+      {enableHighAccuracy:true,timeout:20000,maximumAge:0}
+    );
+  }
+
   function choose(lat,lng){
     selected={lat,lng};
     if(marker)marker.remove();
@@ -126,4 +156,5 @@
     if(e.target.id==='mapPickerModal')closePicker();
   });
   $('#confirmMapLocation')?.addEventListener('click',saveSelectedLocation);
+  $('#useMapCurrentLocation')?.addEventListener('click',useMapCurrentLocation);
 })();
