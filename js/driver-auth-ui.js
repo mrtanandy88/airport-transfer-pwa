@@ -1,4 +1,4 @@
-const registrationFields = ['driverName','driverVehicle','driverCarModel','driverCarColor','driverPlate','driverSelfie','driverCarPhoto','driverLanguages'];
+const registrationFields = ['driverName','driverVehicle','driverCarModel','driverCarColor','driverPlate','driverWhatsApp','driverSelfie','driverCarPhoto','driverLanguages'];
 
 function setupDriverAuthUI() {
   const panel = document.querySelector('#driverAuth');
