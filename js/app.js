@@ -361,8 +361,35 @@ window.completeJob=async id=>{const booking=bookings.find(x=>x.docId===id||x.id=
 $$('.filter').forEach(x=>x.onclick=()=>{$$('.filter').forEach(y=>y.classList.remove('active'));x.classList.add('active');filter=x.dataset.filter;render();});
 $('#clearAll').onclick=()=>alert('Cloud data is protected.');
 function escapeHtml(value){return String(value??'').replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));}
-function setPickupPin(lat,lng){ const latInput=$('#bookingForm input[name="pickupLat"]'), lngInput=$('#bookingForm input[name="pickupLng"]'), status=$('#pickupLocationStatus'); if(latInput)latInput.value=lat; if(lngInput)lngInput.value=lng; if(status)status.textContent='✓ Pickup location pin saved. Your address will still be used as the display address.'; }
-function useCurrentPickupLocation(){ const status=$('#pickupLocationStatus'); if(!navigator.geolocation){ if(status)status.textContent='Location is not supported on this device.'; return; } if(status)status.textContent='Getting your current location…'; navigator.geolocation.getCurrentPosition(pos=>setPickupPin(pos.coords.latitude.toFixed(6),pos.coords.longitude.toFixed(6)),err=>{ if(status)status.textContent='Could not get your location. Please enter the pickup address manually.'; console.warn(err); },{enableHighAccuracy:true,timeout:10000,maximumAge:60000}); }
+function setPickupPin(lat,lng){
+  const latInput=$('#bookingForm input[name="pickupLat"]'),lngInput=$('#bookingForm input[name="pickupLng"]'),status=$('#pickupLocationStatus');
+  if(latInput)latInput.value=Number(lat).toFixed(6);
+  if(lngInput)lngInput.value=Number(lng).toFixed(6);
+  if(status)status.textContent='✓ Current location saved. Address lookup will follow when available.';
+}
+function locationErrorMessage(err){
+  if(err?.code===1)return 'Location permission was denied. Please allow Location for your browser, then try again.';
+  if(err?.code===2)return 'Your device could not determine its location. Turn on GPS/location services and try again.';
+  if(err?.code===3)return 'Location request timed out. Turn on GPS and try again, or use the map picker.';
+  return 'Could not get your current location. Please use the map picker or enter the address manually.';
+}
+function useCurrentPickupLocation(){
+  const status=$('#pickupLocationStatus');
+  if(!window.isSecureContext){if(status)status.textContent='Location requires a secure connection (HTTPS).';return;}
+  if(!navigator.geolocation){if(status)status.textContent='This browser does not provide location services. Please use the map picker.';return;}
+  if(status)status.textContent='📍 Requesting your current location…';
+  navigator.geolocation.getCurrentPosition(
+    pos=>{
+      setPickupPin(pos.coords.latitude,pos.coords.longitude);
+      if(status)status.textContent='✓ Current location saved. You can edit the address above.';
+    },
+    err=>{
+      if(status)status.textContent=locationErrorMessage(err);
+      console.warn('Geolocation error:',err);
+    },
+    {enableHighAccuracy:true,timeout:20000,maximumAge:0}
+  );
+}
 $('#usePickupLocation')?.addEventListener('click',useCurrentPickupLocation);
 $('#bookingForm input[name="pickup"]')?.addEventListener('input',()=>{ const lat=$('#bookingForm input[name="pickupLat"]'),lng=$('#bookingForm input[name="pickupLng"]'),status=$('#pickupLocationStatus'); if(lat)lat.value=''; if(lng)lng.value=''; if(status)status.textContent=''; });
 setDateLimits();
