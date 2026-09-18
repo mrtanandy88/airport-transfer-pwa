@@ -300,6 +300,7 @@ function formatTimestamp(value){
   try{ const d=value?.toDate?value.toDate():(value instanceof Date?value:new Date(value)); if(Number.isNaN(d.getTime())) return ''; return d.toLocaleString('en-MY',{day:'numeric',month:'short',year:'numeric',hour:'numeric',minute:'2-digit',hour12:true}); }catch(_){ return ''; }
 }
 function renderTripStatus(b,driverMode=false){
+  if(b.status==='Available') return '<div class="trip-status"><div class="trip-status-header"><b>LIVE TRIP STATUS</b><span class="trip-status-current">🕐 Waiting for driver</span></div><p class="muted">Your booking is available for a matching driver.</p></div>';
   const current=TRIP_STATUSES.includes(b.tripStatus)?b.tripStatus:(b.status==='Completed'?'Completed':b.status==='Accepted'?'Accepted':'Accepted');
   const currentIndex=TRIP_STATUSES.indexOf(current);
   const fields={Accepted:'acceptedAt',OnTheWay:'onTheWayAt',ArrivedPickup:'arrivedPickupAt',PickedUp:'pickedUpAt',ArrivedDestination:'arrivedDestinationAt',DroppedOff:'droppedOffAt',Completed:'completedAt'};
