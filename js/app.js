@@ -285,11 +285,41 @@ function renderJobs(){
   if(currentRole!=='driver'){ $('#driverJobs').innerHTML=''; return; }
   const accepted=driverAccepted.filter(b=>b.status==='Accepted').sort((a,b)=>String(a.date+a.time).localeCompare(String(b.date+b.time)));
   const available=driverAvailable.filter(b=>b.status==='Available'&&canDriverTake(b)).sort((a,b)=>String(a.date+a.time).localeCompare(String(b.date+b.time)));
-  const card=b=>`<div class="booking driver-job-card"><div class="job-route"><h3>${escapeHtml(b.pickup)} → ${escapeHtml(b.destination)}</h3></div><div class="trip-schedule"><span>🗓 TRIP SCHEDULE</span><strong>${escapeHtml(formatDate(b.date))}</strong><b>${escapeHtml(formatTime(b.time))}</b></div><p>${escapeHtml(String(b.passengers))} passenger(s) • ${escapeHtml(String(b.luggage ?? 0))} luggage • Language: <b>${escapeHtml(b.language||'Any')}</b></p>${b.flightNumber||b.flightType||b.terminal||b.meetInstructions?`<div class="flight-details"><b>✈️ FLIGHT DETAILS</b><br>${b.flightType?`Trip: ${escapeHtml(b.flightType)}<br>`:''}${b.flightNumber?`Flight: <b>${escapeHtml(b.flightNumber)}</b><br>`:''}${b.flightDate||b.flightTime?`Flight schedule: ${escapeHtml(formatDateTime(b.flightDate,b.flightTime))}<br>`:''}${b.terminal?`Terminal: ${escapeHtml(b.terminal)}<br>`:''}${b.meetInstructions?`Meet / pickup: ${escapeHtml(b.meetInstructions)}`:''}</div>`:''}<p>Vehicle: <b>${escapeHtml(b.vehicleType||'Not specified')}</b></p>${b.status==='Accepted'?`<p>Customer: <b>${escapeHtml(b.name||'')}</b> • ${escapeHtml(b.phone||'')}</p><small>Booking ID: ${escapeHtml(b.id)}</small>`:`<small>${escapeHtml(b.name||'')} • ${escapeHtml(b.id)} • ${escapeHtml(matchReasons(b).join(' • '))}</small><button class="accept" onclick="acceptJob('${escapeHtml(b.docId)}')">Accept job</button>`}</div>`;
-  const acceptedHtml=accepted.length?`<div class="driver-section-title"><h3>My accepted jobs</h3><span>${accepted.length} active job${accepted.length===1?'':'s'}</span></div>`+accepted.map(card).join(''):`<div class="driver-section-title"><h3>My accepted jobs</h3><span>No active jobs</span></div>`;
-  const availableHtml=available.length?`<div class="driver-section-title matched-title"><h3>Matched jobs available</h3><span>${available.length} job${available.length===1?'':'s'} to review</span></div>`+available.map(card).join(''):`<div class="driver-section-title matched-title"><h3>Matched jobs available</h3><span>No matching jobs right now</span></div>`;
+
+  const flightDetails=b=>(b.flightNumber||b.flightType||b.terminal||b.meetInstructions)?`<div class="driver-flight-details"><h4>✈️ FLIGHT DETAILS</h4>${b.flightType?`<div>Trip: ${escapeHtml(b.flightType)}</div>`:''}${b.flightNumber?`<div>Flight: <b>${escapeHtml(b.flightNumber)}</b></div>`:''}${b.flightDate||b.flightTime?`<div>Flight schedule: ${escapeHtml(formatDateTime(b.flightDate,b.flightTime))}</div>`:''}${b.terminal?`<div>Terminal: ${escapeHtml(b.terminal)}</div>`:''}${b.meetInstructions?`<div>Meet: ${escapeHtml(b.meetInstructions)}</div>`:''}</div>`:'';
+
+  const card=b=>{
+    const isAccepted=b.status==='Accepted';
+    return `<div class="booking driver-job-card ${isAccepted?'accepted-job':''}">
+      ${isAccepted?'<div class="job-status-row"><span class="badge">ACCEPTED</span></div>':''}
+      <div class="driver-job-route"><h3>${escapeHtml(b.pickup)} → ${escapeHtml(b.destination)}</h3></div>
+      <div class="driver-trip-schedule">
+        <div class="driver-schedule-label">🗓 TRIP SCHEDULE</div>
+        <div class="driver-schedule-date">${escapeHtml(formatDate(b.date))}</div>
+        <div class="driver-schedule-time">${escapeHtml(formatTime(b.time))}</div>
+      </div>
+      <div class="driver-job-info">
+        <div>👤 <b>${escapeHtml(String(b.passengers))}</b> passenger${Number(b.passengers)===1?'':'s'}</div>
+        <div>🧳 <b>${escapeHtml(String(b.luggage ?? 0))}</b> luggage</div>
+        <div>🚗 <b>${escapeHtml(b.vehicleType||'Not specified')}</b></div>
+        <div>🗣️ <b>${escapeHtml(b.language||'Any')}</b></div>
+      </div>
+      ${flightDetails(b)}
+      ${isAccepted
+        ? `<div class="driver-customer-details">Customer: <b>${escapeHtml(b.name||'')}</b><br>Phone: <b>${escapeHtml(b.phone||'')}</b><br><small>Booking ID: ${escapeHtml(b.id)}</small></div>`
+        : `<div class="driver-match-reason">${escapeHtml(matchReasons(b).join(' • '))}</div><button class="accept" onclick="acceptJob('${escapeHtml(b.docId)}')">Accept job</button>`}
+    </div>`;
+  };
+
+  const acceptedHtml=accepted.length
+    ? `<div class="driver-section-title"><h3>My accepted jobs</h3><span>${accepted.length} active job${accepted.length===1?'':'s'}</span></div>`+accepted.map(card).join('')
+    : '<div class="driver-section-title"><h3>My accepted jobs</h3><span>No active jobs</span></div>';
+  const availableHtml=available.length
+    ? `<div class="driver-section-title matched-title"><h3>Matched jobs available</h3><span>${available.length} job${available.length===1?'':'s'} to review</span></div>`+available.map(card).join('')
+    : '<div class="driver-section-title matched-title"><h3>Matched jobs available</h3><span>No matching jobs right now</span></div>';
   $('#driverJobs').innerHTML=acceptedHtml+availableHtml;
-}async function getPublicDriverProfile(uid){ if(!uid)return null; if(publicProfileCache.has(uid))return publicProfileCache.get(uid); try{const snap=await window.FB.getDoc(window.FB.doc(db,'driverPublicProfiles',uid)); const p=snap.exists()?snap.data():null; publicProfileCache.set(uid,p); return p;}catch(e){console.error('Driver profile read failed',e);return null;} }
+}
+async function getPublicDriverProfile(uid){ if(!uid)return null; if(publicProfileCache.has(uid))return publicProfileCache.get(uid); try{const snap=await window.FB.getDoc(window.FB.doc(db,'driverPublicProfiles',uid)); const p=snap.exists()?snap.data():null; publicProfileCache.set(uid,p); return p;}catch(e){console.error('Driver profile read failed',e);return null;} }
 async function refreshCustomerDriverProfiles(){ if(currentRole!=='customer')return; const ids=[...new Set(bookings.filter(b=>b.driverUid).map(b=>b.driverUid))]; await Promise.all(ids.map(getPublicDriverProfile)); renderCustomerBookings(true); }
 function driverCard(b,p){ if(!p)return b.driver?`<div class="driver-card"><b>Driver assigned:</b> ${escapeHtml(b.driver)}<br><b>Vehicle:</b> ${escapeHtml(b.driverVehicleType||b.vehicleType||'')}<br><b>Model:</b> ${escapeHtml(b.driverCarModel||'Not provided')}<br><b>Color:</b> ${escapeHtml(b.driverCarColor||'Not provided')}<br><b>Plate:</b> ${escapeHtml(b.driverPlateNumber||'')}</div>`:''; return `<div class="driver-card"><div class="photo-grid"><div><img src="${p.selfieDataUrl||''}" alt="Assigned driver"><small>Driver</small></div><div><img src="${p.carPhotoDataUrl||''}" alt="Assigned vehicle"><small>Vehicle</small></div></div><p><b>${escapeHtml(p.displayName||b.driver||'Assigned driver')}</b><br>Vehicle: ${escapeHtml(p.vehicleType||b.vehicleType||'')}<br>Model: <b>${escapeHtml(p.carModel||b.driverCarModel||'Not provided')}</b><br>Color: <b>${escapeHtml(p.carColor||b.driverCarColor||'Not provided')}</b><br>Plate: <b>${escapeHtml(p.plateNumber||b.driverPlateNumber||'')}</b></p></div>`; }
 function renderCustomerBookings(skipRefresh=false){ if(currentRole!=='customer'){ $('#customerBookings').innerHTML=''; return; } const list=[...bookings].sort((a,b)=>String(b.date+b.time).localeCompare(String(a.date+a.time))); $('#customerBookings').innerHTML=list.length?`<h3>Your bookings</h3>`+list.map(b=>`<div class="booking"><h3>${escapeHtml(b.id)} <span class="badge">${escapeHtml(b.status)}</span></h3><p>${escapeHtml(b.pickup)} → ${escapeHtml(b.destination)}</p><div class="trip-schedule compact"><span>🗓 TRIP SCHEDULE</span><strong>${escapeHtml(formatDate(b.date))}</strong><b>${escapeHtml(formatTime(b.time))}</b></div><p>${escapeHtml(b.language)} • Vehicle: <b>${escapeHtml(b.vehicleType||'Not specified')}</b> • Luggage: <b>${escapeHtml(String(b.luggage ?? 0))}</b></p>${b.flightNumber||b.flightType||b.terminal||b.meetInstructions?`<div class="flight-details"><b>✈️ FLIGHT DETAILS</b><br>${b.flightType?`Trip: ${escapeHtml(b.flightType)}<br>`:''}${b.flightNumber?`Flight: <b>${escapeHtml(b.flightNumber)}</b><br>`:''}${b.flightDate||b.flightTime?`Flight schedule: ${escapeHtml(formatDateTime(b.flightDate,b.flightTime))}<br>`:''}${b.terminal?`Terminal: ${escapeHtml(b.terminal)}<br>`:''}${b.meetInstructions?`Meet / pickup: ${escapeHtml(b.meetInstructions)}`:''}</div>`:''}${b.status==='Accepted'?driverCard(b,publicProfileCache.get(b.driverUid)): '<small>Waiting for a matched driver</small>'}</div>`).join(''):'<p class="muted">No bookings yet.</p>'; if(!skipRefresh&&list.some(b=>b.driverUid))refreshCustomerDriverProfiles(); }
