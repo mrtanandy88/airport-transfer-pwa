@@ -4,6 +4,10 @@ const KEY = 'airportTransferBookingsV5';
 const SKEY = 'airportTransferSchedulesV3';
 const VEHICLES = ['Sedan', 'SUV', 'MPV'];
 const LANGUAGES = ['English', 'Malay', 'Mandarin', 'Cantonese', 'Tamil'];
+const ADMIN_WHATSAPP = '60173858996';
+const TRIP_STATUSES = ['Accepted','OnTheWay','ArrivedPickup','PickedUp','ArrivedDestination','DroppedOff','Completed'];
+const TRIP_STATUS_LABELS = {Accepted:'Accepted',OnTheWay:'Driver On The Way',ArrivedPickup:'Arrived At Pickup',PickedUp:'Customer Picked Up',ArrivedDestination:'Arrived At Destination',DroppedOff:'Customer Dropped Off',Completed:'Completed'};
+const TRIP_STATUS_ICONS = {Accepted:'✅',OnTheWay:'🚗',ArrivedPickup:'📍',PickedUp:'👤',ArrivedDestination:'🏁',DroppedOff:'🛬',Completed:'🎉'};
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 
@@ -102,6 +106,7 @@ function loadDriverProfileUI() {
   $('#driverCarModelProfile').value = p.carModel || '';
   $('#driverCarColorProfile').value = p.carColor || '';
   $('#driverPlateProfile').value = p.plateNumber || '';
+  $('#driverWhatsAppProfile').value = p.whatsappNumber || '';
   setSelected($('#driverLanguagesProfile'), p.languages || driverProfile?.languages || []);
   renderDriverPhotoPreview(p);
 }
@@ -133,14 +138,14 @@ async function signUp(role, email, password) {
   email = (email || '').trim(); if (!email || !password) return alert('Enter email and password.'); if (password.length < 6) return alert('Password must be at least 6 characters.');
   try {
     if (role !== 'driver') { const result = await window.FB.createUserWithEmailAndPassword(auth, email, password); await window.FB.setDoc(window.FB.doc(db, 'users', result.user.uid), { email, role, createdAt: window.FB.serverTimestamp() }); alert('Customer account created.'); return; }
-    const displayName = $('#driverName').value.trim(), vehicleType = $('#driverVehicle').value, carModel = $('#driverCarModel').value.trim(), carColor = $('#driverCarColor').value.trim(), plateNumber = normalizePlate($('#driverPlate').value);
+    const displayName = $('#driverName').value.trim(), vehicleType = $('#driverVehicle').value, carModel = $('#driverCarModel').value.trim(), carColor = $('#driverCarColor').value.trim(), plateNumber = normalizePlate($('#driverPlate').value), whatsappNumber = normalizeWhatsAppNumber($('#driverWhatsApp').value);
     const selfieFile = $('#driverSelfie').files[0], carFile = $('#driverCarPhoto').files[0];
-    if (!displayName) return alert('Please enter your driver name.'); if (!VEHICLES.includes(vehicleType)) return alert('Please select your vehicle.'); if (!validCarModel(carModel)) return alert('Please enter your car model.'); if (!validCarColor(carColor)) return alert('Please enter your car color.'); if (!validPlate(plateNumber)) return alert('Please enter your car plate number.'); if (!selfieFile || !carFile) return alert('Please upload both your selfie and car photo.');
+    if (!displayName) return alert('Please enter your driver name.'); if (!VEHICLES.includes(vehicleType)) return alert('Please select your vehicle.'); if (!validCarModel(carModel)) return alert('Please enter your car model.'); if (!validCarColor(carColor)) return alert('Please enter your car color.'); if (!validPlate(plateNumber)) return alert('Please enter your car plate number.'); if (!whatsappNumber) return alert('Please enter your WhatsApp number in international format, e.g. 60123456789.'); if (!selfieFile || !carFile) return alert('Please upload both your selfie and car photo.');
     const [selfieDataUrl, carPhotoDataUrl] = await Promise.all([compressImage(selfieFile, 700, 220000), compressImage(carFile, 1000, 220000)]);
     const result = await window.FB.createUserWithEmailAndPassword(auth, email, password);
     const languages = selectedLanguages();
-    await window.FB.setDoc(window.FB.doc(db, 'users', result.user.uid), { email, role, displayName, vehicleType, carModel, carColor, plateNumber, languages, createdAt: window.FB.serverTimestamp() });
-    await window.FB.setDoc(window.FB.doc(db, 'driverPublicProfiles', result.user.uid), { driverUid: result.user.uid, displayName, vehicleType, carModel, carColor, plateNumber, languages, selfieDataUrl, carPhotoDataUrl, updatedAt: window.FB.serverTimestamp() });
+    await window.FB.setDoc(window.FB.doc(db, 'users', result.user.uid), { email, role, displayName, vehicleType, carModel, carColor, plateNumber, whatsappNumber, languages, createdAt: window.FB.serverTimestamp() });
+    await window.FB.setDoc(window.FB.doc(db, 'driverPublicProfiles', result.user.uid), { driverUid: result.user.uid, displayName, vehicleType, carModel, carColor, plateNumber, whatsappNumber, languages, selfieDataUrl, carPhotoDataUrl, updatedAt: window.FB.serverTimestamp() });
     alert('Driver account created. Your profile is ready for customer verification.');
   } catch (e) { console.error(e); alert(e.message); }
 }
@@ -151,8 +156,8 @@ async function signIn(expectedRole, email, password) {
 }
 async function saveDriverProfile() {
   if (!currentUser || currentRole !== 'driver') return alert('Please sign in as a driver first.');
-  const displayName = $('#driverNameProfile').value.trim(), vehicleType = $('#driverVehicleProfile').value, carModel = $('#driverCarModelProfile').value.trim(), carColor = $('#driverCarColorProfile').value.trim(), plateNumber = normalizePlate($('#driverPlateProfile').value);
-  if (!displayName) return alert('Please enter your driver name.'); if (!VEHICLES.includes(vehicleType)) return alert('Please select your vehicle.'); if (!validCarModel(carModel)) return alert('Please enter your car model.'); if (!validCarColor(carColor)) return alert('Please enter your car color.'); if (!validPlate(plateNumber)) return alert('Please enter your car plate number.');
+  const displayName = $('#driverNameProfile').value.trim(), vehicleType = $('#driverVehicleProfile').value, carModel = $('#driverCarModelProfile').value.trim(), carColor = $('#driverCarColorProfile').value.trim(), plateNumber = normalizePlate($('#driverPlateProfile').value), whatsappNumber = normalizeWhatsAppNumber($('#driverWhatsAppProfile').value);
+  if (!displayName) return alert('Please enter your driver name.'); if (!VEHICLES.includes(vehicleType)) return alert('Please select your vehicle.'); if (!validCarModel(carModel)) return alert('Please enter your car model.'); if (!validCarColor(carColor)) return alert('Please enter your car color.'); if (!validPlate(plateNumber)) return alert('Please enter your car plate number.'); if (!whatsappNumber) return alert('Please enter your WhatsApp number in international format, e.g. 60123456789.');
   const button = $('#saveDriverProfile'); button.disabled = true; button.textContent = 'Saving...'; $('#driverProfileMessage').textContent = '';
   try {
     let selfieDataUrl = driverPublicProfile?.selfieDataUrl || '', carPhotoDataUrl = driverPublicProfile?.carPhotoDataUrl || '';
@@ -162,18 +167,18 @@ async function saveDriverProfile() {
     if (!selfieDataUrl || !carPhotoDataUrl) return alert('Please upload both your selfie and car photo before saving your profile.');
     const languages = selectedProfileLanguages();
     try {
-      await window.FB.setDoc(window.FB.doc(db, 'users', currentUser.uid), { displayName, vehicleType, carModel, carColor, plateNumber, languages }, { merge: true });
+      await window.FB.setDoc(window.FB.doc(db, 'users', currentUser.uid), { displayName, vehicleType, carModel, carColor, plateNumber, whatsappNumber, languages }, { merge: true });
     } catch (e) {
       console.error('Driver users profile save failed:', e);
       throw new Error('users profile save failed (' + (e.code || 'error') + '): ' + e.message);
     }
     try {
-      await window.FB.setDoc(window.FB.doc(db, 'driverPublicProfiles', currentUser.uid), { driverUid: currentUser.uid, displayName, vehicleType, carModel, carColor, plateNumber, languages, selfieDataUrl, carPhotoDataUrl, updatedAt: window.FB.serverTimestamp() }, { merge: true });
+      await window.FB.setDoc(window.FB.doc(db, 'driverPublicProfiles', currentUser.uid), { driverUid: currentUser.uid, displayName, vehicleType, carModel, carColor, plateNumber, whatsappNumber, languages, selfieDataUrl, carPhotoDataUrl, updatedAt: window.FB.serverTimestamp() }, { merge: true });
     } catch (e) {
       console.error('Driver public profile save failed:', e);
       throw new Error('driverPublicProfiles save failed (' + (e.code || 'error') + '): ' + e.message);
     }
-    driverProfile = { ...(driverProfile || {}), displayName, vehicleType, carModel, carColor, plateNumber, languages }; driverPublicProfile = { ...(driverPublicProfile || {}), displayName, vehicleType, carModel, carColor, plateNumber, languages, selfieDataUrl, carPhotoDataUrl };
+    driverProfile = { ...(driverProfile || {}), displayName, vehicleType, carModel, carColor, plateNumber, whatsappNumber, languages }; driverPublicProfile = { ...(driverPublicProfile || {}), displayName, vehicleType, carModel, carColor, plateNumber, whatsappNumber, languages, selfieDataUrl, carPhotoDataUrl };
     $('#driverSelfieProfile').value = ''; $('#driverCarPhotoProfile').value = ''; renderDriverPhotoPreview(driverPublicProfile); renderJobs();
     $('#driverProfileMessage').textContent = '✓ Driver profile saved. Customers will see your name, vehicle, model, color, plate and photos after assignment.';
   } catch (e) { $('#driverProfileMessage').textContent = '✕ Save failed: ' + (e.code || 'error') + ' — ' + e.message; }
@@ -199,7 +204,7 @@ $('#bookingForm').addEventListener('submit', async e => {
   const adults = Math.max(1, Number(f.get('adults') || 0)), children = Math.max(0, Number(f.get('children') || 0));
   const largeLuggage = Math.max(0, Number(f.get('largeLuggage') || 0)), mediumLuggage = Math.max(0, Number(f.get('mediumLuggage') || 0)), smallLuggage = Math.max(0, Number(f.get('smallLuggage') || 0)), handCarry = Math.max(0, Number(f.get('handCarry') || 0));
   const passengers = adults + children, checkedLuggage = largeLuggage + mediumLuggage + smallLuggage, luggage = checkedLuggage + handCarry;
-  const booking = { id: 'AT-' + Date.now().toString().slice(-6), name: f.get('name'), phone: f.get('phone'), pickup: String(f.get('pickup') || '').trim(), destination: String(f.get('destination') || '').trim(), pickupLat: f.get('pickupLat') ? Number(f.get('pickupLat')) : null, pickupLng: f.get('pickupLng') ? Number(f.get('pickupLng')) : null, dropoffLat: f.get('dropoffLat') ? Number(f.get('dropoffLat')) : null, dropoffLng: f.get('dropoffLng') ? Number(f.get('dropoffLng')) : null, date: bookingDate, time: bookingTime, adults, children, passengers, largeLuggage, mediumLuggage, smallLuggage, handCarry, checkedLuggage, luggage, flightType: f.get('flightType') || '', flightNumber: String(f.get('flightNumber') || '').trim().toUpperCase(), flightDate: f.get('flightDate') || '', flightTime: f.get('flightTime') || '', terminal: String(f.get('terminal') || '').trim(), meetInstructions: String(f.get('meetInstructions') || '').trim(), language: f.get('language'), vehicleType, status: 'Available', driver: '', driverUid: '' };
+  const booking = { id: 'AT-' + Date.now().toString().slice(-6), name: f.get('name'), phone: f.get('phone'), pickup: String(f.get('pickup') || '').trim(), destination: String(f.get('destination') || '').trim(), pickupLat: f.get('pickupLat') ? Number(f.get('pickupLat')) : null, pickupLng: f.get('pickupLng') ? Number(f.get('pickupLng')) : null, dropoffLat: f.get('dropoffLat') ? Number(f.get('dropoffLat')) : null, dropoffLng: f.get('dropoffLng') ? Number(f.get('dropoffLng')) : null, date: bookingDate, time: bookingTime, adults, children, passengers, largeLuggage, mediumLuggage, smallLuggage, handCarry, checkedLuggage, luggage, flightType: f.get('flightType') || '', flightNumber: String(f.get('flightNumber') || '').trim().toUpperCase(), flightDate: f.get('flightDate') || '', flightTime: f.get('flightTime') || '', terminal: String(f.get('terminal') || '').trim(), meetInstructions: String(f.get('meetInstructions') || '').trim(), language: f.get('language'), vehicleType, status: 'Available', tripStatus: 'AwaitingDriver', driver: '', driverUid: '', driverWhatsApp: '' };
   try { await addBooking(booking); e.target.reset(); $('#customerResult').innerHTML = `<div class="booking success"><h3>Booking placed ✓</h3><p>Your booking ID is <b>${escapeHtml(booking.id)}</b>.</p><p>Vehicle: <b>${escapeHtml(booking.vehicleType)}</b></p><span class="badge">Available</span></div>`; } catch (err) { alert('Could not save booking: ' + err.message); }
 });
 function parseDateParts(value) {
@@ -276,10 +281,46 @@ async function acceptJob(id) {
   const booking=bookings.find(x=>x.docId===id||x.id===id); if(!booking||!currentUser||currentRole!=='driver') return alert('Please sign in as a driver first.');
   if(!driverProfile?.vehicleType||!validPlate(driverProfile?.plateNumber)||!validCarModel(driverProfile?.carModel)||!validCarColor(driverProfile?.carColor)) return alert('Please complete your driver profile, including vehicle, car model, car color and plate number.');
   if(booking.status!=='Available') return alert('This job has already been taken.'); if(!canDriverTake(booking)) return alert('This job no longer matches your vehicle, language, private schedule or existing job schedule.');
-  try { await window.FB.updateDoc(window.FB.doc(db,'bookings',booking.docId), { status:'Accepted', driver:driverProfile.displayName||currentUser.email, driverUid:currentUser.uid, driverVehicleType:driverProfile.vehicleType, driverCarModel:driverProfile.carModel, driverCarColor:driverProfile.carColor, driverPlateNumber:driverProfile.plateNumber, acceptedAt:window.FB.serverTimestamp() }); alert('Job accepted. The customer can now see your driver and vehicle details.'); }
+  try { await window.FB.updateDoc(window.FB.doc(db,'bookings',booking.docId), { status:'Accepted', tripStatus:'Accepted', tripStatusUpdatedAt:window.FB.serverTimestamp(), driver:driverProfile.displayName||currentUser.email, driverUid:currentUser.uid, driverWhatsApp:driverProfile.whatsappNumber||currentUser.phoneNumber||'', driverVehicleType:driverProfile.vehicleType, driverCarModel:driverProfile.carModel, driverCarColor:driverProfile.carColor, driverPlateNumber:driverProfile.plateNumber, acceptedAt:window.FB.serverTimestamp() }); alert('Job accepted. The customer can now see your driver, vehicle details and live trip status.'); }
   catch(e){ alert('Could not accept job ('+(e.code||'error')+'): '+e.message); }
 }
 window.acceptJob=acceptJob;
+function normalizeWhatsAppNumber(value){ return String(value||'').replace(/\D/g,''); }
+function whatsappUrl(number,message=''){ const n=normalizeWhatsAppNumber(number); return 'https://wa.me/'+n+(message?'?text='+encodeURIComponent(message):''); }
+function bookingWhatsAppMessage(b,mode='support'){
+  const lines=[mode==='group'?'Airport Transfer WhatsApp Group Setup':'Airport Transfer Customer Service','',
+    'Booking: '+(b.id||''),'Customer: '+(b.name||'')+' • '+(b.phone||''),'Pickup: '+(b.pickup||''),'Destination: '+(b.destination||''),'Trip: '+formatDateTime(b.date,b.time),
+    'Vehicle: '+(b.vehicleType||''),'Preferred language: '+(b.language||'Any'),'Trip status: '+(TRIP_STATUS_LABELS[b.tripStatus]||'Awaiting driver'),
+    'Driver: '+(b.driver||'Not assigned'),'Driver WhatsApp: '+(b.driverWhatsApp||'Not provided'),'Customer WhatsApp: '+(b.phone||''),'',
+    mode==='group'?'Please create a WhatsApp group for this transfer and add the customer, driver and admin.':'Please assist with this airport transfer booking.'];
+  return lines.join('\n');
+}
+function adminWhatsAppLink(b,mode='support'){ return whatsappUrl(ADMIN_WHATSAPP,bookingWhatsAppMessage(b,mode)); }
+function formatTimestamp(value){
+  try{ const d=value?.toDate?value.toDate():(value instanceof Date?value:new Date(value)); if(Number.isNaN(d.getTime())) return ''; return d.toLocaleString('en-MY',{day:'numeric',month:'short',year:'numeric',hour:'numeric',minute:'2-digit',hour12:true}); }catch(_){ return ''; }
+}
+function renderTripStatus(b,driverMode=false){
+  const current=TRIP_STATUSES.includes(b.tripStatus)?b.tripStatus:(b.status==='Completed'?'Completed':b.status==='Accepted'?'Accepted':'Accepted');
+  const currentIndex=TRIP_STATUSES.indexOf(current);
+  const fields={Accepted:'acceptedAt',OnTheWay:'onTheWayAt',ArrivedPickup:'arrivedPickupAt',PickedUp:'pickedUpAt',ArrivedDestination:'arrivedDestinationAt',DroppedOff:'droppedOffAt',Completed:'completedAt'};
+  const timeline=TRIP_STATUSES.map((key,i)=>{ const done=i<=currentIndex,ts=b[fields[key]]; return '<div class="trip-status-step '+(done?'done ':'')+(key===current?'current':'')+'"><span class="trip-status-icon">'+TRIP_STATUS_ICONS[key]+'</span><div><strong>'+escapeHtml(TRIP_STATUS_LABELS[key])+'</strong>'+(ts?'<small>'+escapeHtml(formatTimestamp(ts))+'</small>':'')+'</div></div>'; }).join('');
+  let actions='';
+  if(driverMode&&b.status==='Accepted'&&current!=='Completed'){
+    const next={Accepted:'OnTheWay',OnTheWay:'ArrivedPickup',ArrivedPickup:'PickedUp',PickedUp:'ArrivedDestination',ArrivedDestination:'DroppedOff',DroppedOff:'Completed'}[current];
+    if(next) actions='<button class="trip-status-button" onclick="updateTripStatus(\''+escapeHtml(b.docId)+'\',\''+next+'\')">'+TRIP_STATUS_ICONS[next]+' '+escapeHtml(TRIP_STATUS_LABELS[next])+'</button>';
+  }
+  return '<div class="trip-status"><div class="trip-status-header"><b>LIVE TRIP STATUS</b><span class="trip-status-current">'+TRIP_STATUS_ICONS[current]+' '+escapeHtml(TRIP_STATUS_LABELS[current])+'</span></div><div class="trip-status-timeline">'+timeline+'</div>'+actions+'</div>';
+}
+async function updateTripStatus(id,nextStatus){
+  const booking=bookings.find(x=>x.docId===id||x.id===id); if(!booking||!currentUser||currentRole!=='driver') return;
+  const current=TRIP_STATUSES.includes(booking.tripStatus)?booking.tripStatus:(booking.status==='Accepted'?'Accepted':'Accepted');
+  const expected={Accepted:'OnTheWay',OnTheWay:'ArrivedPickup',ArrivedPickup:'PickedUp',PickedUp:'ArrivedDestination',ArrivedDestination:'DroppedOff',DroppedOff:'Completed'}[current];
+  if(expected!==nextStatus) return alert('Please update the trip status in order.');
+  const timestampField={OnTheWay:'onTheWayAt',ArrivedPickup:'arrivedPickupAt',PickedUp:'pickedUpAt',ArrivedDestination:'arrivedDestinationAt',DroppedOff:'droppedOffAt',Completed:'completedAt'}[nextStatus];
+  const payload={tripStatus:nextStatus,tripStatusUpdatedAt:window.FB.serverTimestamp()}; if(timestampField) payload[timestampField]=window.FB.serverTimestamp(); if(nextStatus==='Completed') payload.status='Completed';
+  try{ await window.FB.updateDoc(window.FB.doc(db,'bookings',booking.docId),payload); }catch(e){ alert('Could not update trip status ('+(e.code||'error')+'): '+e.message); }
+}
+window.updateTripStatus=updateTripStatus;
 async function addUnavailable() {
   const date=$('#unavailableDate').value, from=$('#unavailableFrom').value, to=$('#unavailableTo').value; if(!currentUser||currentRole!=='driver') return alert('Please sign in as a driver first.'); if(!date||!from||!to) return alert('Please select a date, From time and To time.'); if(from>=to) return alert('The To time must be later than the From time.');
   if(schedules.some(s=>s.date===date&&s.from===from&&s.to===to)){ $('#scheduleMessage').textContent='Already added — duplicate schedule prevented.'; return; }
@@ -297,52 +338,26 @@ function renderJobs(){
   if(currentRole!=='driver'){ $('#driverJobs').innerHTML=''; return; }
   const accepted=driverAccepted.filter(b=>b.status==='Accepted').sort((a,b)=>String(a.date+a.time).localeCompare(String(b.date+b.time)));
   const available=driverAvailable.filter(b=>b.status==='Available'&&canDriverTake(b)).sort((a,b)=>String(a.date+a.time).localeCompare(String(b.date+b.time)));
-
   const flightDetails=b=>(b.flightNumber||b.flightType||b.terminal||b.meetInstructions)?`<div class="driver-flight-details"><h4>✈️ FLIGHT DETAILS</h4>${b.flightType?`<div>Trip: ${escapeHtml(b.flightType)}</div>`:''}${b.flightNumber?`<div>Flight: <b>${escapeHtml(b.flightNumber)}</b></div>`:''}${b.flightDate||b.flightTime?`<div>Flight schedule: ${escapeHtml(formatDateTime(b.flightDate,b.flightTime))}</div>`:''}${b.terminal?`<div>Terminal: ${escapeHtml(b.terminal)}</div>`:''}${b.meetInstructions?`<div>Meet: ${escapeHtml(b.meetInstructions)}</div>`:''}</div>`:'';
-
-  const card=b=>{
-    const isAccepted=b.status==='Accepted';
-    return `<div class="booking driver-job-card ${isAccepted?'accepted-job':''}">
-      ${isAccepted?'<div class="job-status-row"><span class="badge">ACCEPTED</span></div>':''}
-      <div class="driver-job-route"><h3>${escapeHtml(b.pickup)} → ${escapeHtml(b.destination)}</h3></div>
-      <div class="driver-trip-schedule">
-        <div class="driver-schedule-label">🗓 TRIP SCHEDULE</div>
-        <div class="driver-schedule-date">${escapeHtml(formatDate(b.date))}</div>
-        <div class="driver-schedule-time">${escapeHtml(formatTime(b.time))}</div>
-      </div>
-      <div class="driver-job-info">
-        <div>👤 <b>${escapeHtml(String(b.passengers))}</b> passenger${Number(b.passengers)===1?'':'s'}</div>
-        <div>🧳 <b>${escapeHtml(String(b.luggage ?? 0))}</b> luggage</div>
-        <div>🚗 <b>${escapeHtml(b.vehicleType||'Not specified')}</b></div>
-        <div>🗣️ <b>${escapeHtml(b.language||'Any')}</b></div>
-      </div>
-      ${locationLinks(b,true)}
-      ${flightDetails(b)}
-      ${isAccepted
-        ? `<div class="driver-customer-details">Customer: <b>${escapeHtml(b.name||'')}</b><br>Phone: <b>${escapeHtml(b.phone||'')}</b><br><small>Booking ID: ${escapeHtml(b.id)}</small></div>`
-        : `<div class="driver-match-reason">${escapeHtml(matchReasons(b).join(' • '))}</div><button class="accept" onclick="acceptJob('${escapeHtml(b.docId)}')">Accept job</button>`}
-    </div>`;
-  };
-
-  const acceptedHtml=accepted.length
-    ? `<div class="driver-section-title"><h3>My accepted jobs</h3><span>${accepted.length} active job${accepted.length===1?'':'s'}</span></div>`+accepted.map(card).join('')
-    : '<div class="driver-section-title"><h3>My accepted jobs</h3><span>No active jobs</span></div>';
-  const availableHtml=available.length
-    ? `<div class="driver-section-title matched-title"><h3>Matched jobs available</h3><span>${available.length} job${available.length===1?'':'s'} to review</span></div>`+available.map(card).join('')
-    : '<div class="driver-section-title matched-title"><h3>Matched jobs available</h3><span>No matching jobs right now</span></div>';
+  const card=b=>{ const isAccepted=b.status==='Accepted'; return `<div class="booking driver-job-card ${isAccepted?'accepted-job':''}">${isAccepted?'<div class="job-status-row"><span class="badge">ACCEPTED</span></div>':''}<div class="driver-job-route"><h3>${escapeHtml(b.pickup)} → ${escapeHtml(b.destination)}</h3></div><div class="driver-trip-schedule"><div class="driver-schedule-label">🗓 TRIP SCHEDULE</div><div class="driver-schedule-date">${escapeHtml(formatDate(b.date))}</div><div class="driver-schedule-time">${escapeHtml(formatTime(b.time))}</div></div><div class="driver-job-info"><div>👤 <b>${escapeHtml(String(b.passengers))}</b> passenger${Number(b.passengers)===1?'':'s'}</div><div>🧳 <b>${escapeHtml(String(b.luggage ?? 0))}</b> luggage</div><div>🚗 <b>${escapeHtml(b.vehicleType||'Not specified')}</b></div><div>🗣️ <b>${escapeHtml(b.language||'Any')}</b></div></div>${locationLinks(b,true)}${flightDetails(b)}${isAccepted?`<div class="driver-customer-details">Customer: <b>${escapeHtml(b.name||'')}</b><br>Phone: <b>${escapeHtml(b.phone||'')}</b><br><small>Booking ID: ${escapeHtml(b.id)}</small></div>${renderTripStatus(b,true)}<div class="whatsapp-actions"><a class="whatsapp-button" href="${adminWhatsAppLink(b,'support')}" target="_blank" rel="noopener">💬 WhatsApp admin</a></div>`:`<div class="driver-match-reason">${escapeHtml(matchReasons(b).join(' • '))}</div><button class="accept" onclick="acceptJob('${escapeHtml(b.docId)}')">Accept job</button>`}</div>`; };
+  const acceptedHtml=accepted.length?`<div class="driver-section-title"><h3>My accepted jobs</h3><span>${accepted.length} active job${accepted.length===1?'':'s'}</span></div>`+accepted.map(card).join(''):'<div class="driver-section-title"><h3>My accepted jobs</h3><span>No active jobs</span></div>';
+  const availableHtml=available.length?`<div class="driver-section-title matched-title"><h3>Matched jobs available</h3><span>${available.length} job${available.length===1?'':'s'} to review</span></div>`+available.map(card).join(''):'<div class="driver-section-title matched-title"><h3>Matched jobs available</h3><span>No matching jobs right now</span></div>';
   $('#driverJobs').innerHTML=acceptedHtml+availableHtml;
 }
-async function getPublicDriverProfile(uid){ if(!uid)return null; if(publicProfileCache.has(uid))return publicProfileCache.get(uid); try{const snap=await window.FB.getDoc(window.FB.doc(db,'driverPublicProfiles',uid)); const p=snap.exists()?snap.data():null; publicProfileCache.set(uid,p); return p;}catch(e){console.error('Driver profile read failed',e);return null;} }
+
+async function getPublicDriverProfile(uid)async function getPublicDriverProfile(uid){ if(!uid)return null; if(publicProfileCache.has(uid))return publicProfileCache.get(uid); try{const snap=await window.FB.getDoc(window.FB.doc(db,'driverPublicProfiles',uid)); const p=snap.exists()?snap.data():null; publicProfileCache.set(uid,p); return p;}catch(e){console.error('Driver profile read failed',e);return null;} }
 async function refreshCustomerDriverProfiles(){ if(currentRole!=='customer')return; const ids=[...new Set(bookings.filter(b=>b.driverUid).map(b=>b.driverUid))]; await Promise.all(ids.map(getPublicDriverProfile)); renderCustomerBookings(true); }
-function driverCard(b,p){ if(!p)return b.driver?`<div class="driver-card"><b>Driver assigned:</b> ${escapeHtml(b.driver)}<br><b>Vehicle:</b> ${escapeHtml(b.driverVehicleType||b.vehicleType||'')}<br><b>Model:</b> ${escapeHtml(b.driverCarModel||'Not provided')}<br><b>Color:</b> ${escapeHtml(b.driverCarColor||'Not provided')}<br><b>Plate:</b> ${escapeHtml(b.driverPlateNumber||'')}</div>`:''; return `<div class="driver-card"><div class="photo-grid"><div><img src="${p.selfieDataUrl||''}" alt="Assigned driver"><small>Driver</small></div><div><img src="${p.carPhotoDataUrl||''}" alt="Assigned vehicle"><small>Vehicle</small></div></div><p><b>${escapeHtml(p.displayName||b.driver||'Assigned driver')}</b><br>Vehicle: ${escapeHtml(p.vehicleType||b.vehicleType||'')}<br>Model: <b>${escapeHtml(p.carModel||b.driverCarModel||'Not provided')}</b><br>Color: <b>${escapeHtml(p.carColor||b.driverCarColor||'Not provided')}</b><br>Plate: <b>${escapeHtml(p.plateNumber||b.driverPlateNumber||'')}</b></p></div>`; }
+function driverCard(b,p){
+  if(!p) return b.driver?'<div class="driver-card"><b>Driver assigned:</b> '+escapeHtml(b.driver)+'<br><b>Vehicle:</b> '+escapeHtml(b.driverVehicleType||b.vehicleType||'')+'<br><b>Model:</b> '+escapeHtml(b.driverCarModel||'Not provided')+'<br><b>Color:</b> '+escapeHtml(b.driverCarColor||'Not provided')+'<br><b>Plate:</b> '+escapeHtml(b.driverPlateNumber||'')+'</div>':'';
+  return '<div class="driver-card"><div class="photo-grid"><div><img src="'+(p.selfieDataUrl||'')+'" alt="Assigned driver"><small>Driver</small></div><div><img src="'+(p.carPhotoDataUrl||'')+'" alt="Assigned vehicle"><small>Vehicle</small></div></div><p><b>'+escapeHtml(p.displayName||b.driver||'Assigned driver')+'</b><br>Vehicle: '+escapeHtml(p.vehicleType||b.vehicleType||'')+'<br>Model: <b>'+escapeHtml(p.carModel||b.driverCarModel||'Not provided')+'</b><br>Color: <b>'+escapeHtml(p.carColor||b.driverCarColor||'Not provided')+'</b><br>Plate: <b>'+escapeHtml(p.plateNumber||b.driverPlateNumber||'')+'</b></p></div>';
+}
 function renderCustomerBookings(skipRefresh=false){
   if(currentRole!=='customer'){ $('#customerBookings').innerHTML=''; return; }
   const list=[...bookings].sort((a,b)=>String(b.date+b.time).localeCompare(String(a.date+a.time)));
-  const bookingForm=$('#bookingForm');
-  if(bookingForm && list.length) bookingForm.classList.add('hidden');
+  const bookingForm=$('#bookingForm'); if(bookingForm&&list.length) bookingForm.classList.add('hidden');
   if(!list.length){ $('#customerBookings').innerHTML='<p class="muted">No bookings yet.</p>'; return; }
-  $('#customerBookings').innerHTML='<div class="customer-bookings-header"><div><h3>Your bookings</h3><p class="muted">Your existing bookings are shown below.</p></div><button class="secondary" type="button" onclick="startNewBooking()">＋ New booking</button></div>'+list.map(b=>`<div class="booking"><h3>${escapeHtml(b.id)} <span class="badge">${escapeHtml(b.status)}</span></h3><p>${escapeHtml(b.pickup)} → ${escapeHtml(b.destination)}</p><div class="trip-schedule compact"><span>🗓 TRIP SCHEDULE</span><strong>${escapeHtml(formatDate(b.date))}</strong><b>${escapeHtml(formatTime(b.time))}</b></div>${locationLinks(b,false)}<div class="customer-party-summary"><div>👤 <b>${escapeHtml(String(b.adults ?? b.passengers ?? 0))}</b> adult${Number(b.adults ?? b.passengers ?? 0)===1?'':'s'}${Number(b.children ?? 0)>0?' • '+escapeHtml(String(b.children))+' children':''}</div><div>🧳 <b>${escapeHtml(String(b.luggage ?? 0))}</b> total bags • Checked: ${escapeHtml(String(b.checkedLuggage ?? b.luggage ?? 0))} • Hand carry: ${escapeHtml(String(b.handCarry ?? 0))}</div><div class="luggage-breakdown">Large: ${escapeHtml(String(b.largeLuggage ?? 0))} • Medium: ${escapeHtml(String(b.mediumLuggage ?? 0))} • Small: ${escapeHtml(String(b.smallLuggage ?? 0))}</div></div><p>${escapeHtml(b.language)} • Vehicle: <b>${escapeHtml(b.vehicleType||'Not specified')}</b></p>${b.flightNumber||b.flightType||b.terminal||b.meetInstructions?`<div class="flight-details"><b>✈️ FLIGHT DETAILS</b><br>${b.flightType?`Trip: ${escapeHtml(b.flightType)}<br>`:''}${b.flightNumber?`Flight: <b>${escapeHtml(b.flightNumber)}</b><br>`:''}${b.flightDate||b.flightTime?`Flight schedule: ${escapeHtml(formatDateTime(b.flightDate,b.flightTime))}<br>`:''}${b.terminal?`Terminal: ${escapeHtml(b.terminal)}<br>`:''}${b.meetInstructions?`Meet / pickup: ${escapeHtml(b.meetInstructions)}`:''}</div>`:''}${b.status==='Accepted'?driverCard(b,publicProfileCache.get(b.driverUid)):'<small>Waiting for a matched driver</small>'}</div>`).join('');
-  if(!skipRefresh&&list.some(b=>b.driverUid))refreshCustomerDriverProfiles();
+  $('#customerBookings').innerHTML='<div class="customer-bookings-header"><div><h3>Your bookings</h3><p class="muted">Your existing bookings are shown below.</p></div><button class="secondary" type="button" onclick="startNewBooking()">＋ New booking</button></div>'+list.map(b=>`<div class="booking"><h3>${escapeHtml(b.id)} <span class="badge">${escapeHtml(b.status)}</span></h3><p>${escapeHtml(b.pickup)} → ${escapeHtml(b.destination)}</p><div class="trip-schedule compact"><span>🗓 TRIP SCHEDULE</span><strong>${escapeHtml(formatDate(b.date))}</strong><b>${escapeHtml(formatTime(b.time))}</b></div>${locationLinks(b,false)}<div class="customer-party-summary"><div>👤 <b>${escapeHtml(String(b.adults ?? b.passengers ?? 0))}</b> adult${Number(b.adults ?? b.passengers ?? 0)===1?'':'s'}${Number(b.children ?? 0)>0?' • '+escapeHtml(String(b.children))+' children':''}</div><div>🧳 <b>${escapeHtml(String(b.luggage ?? 0))}</b> total bags • Checked: ${escapeHtml(String(b.checkedLuggage ?? b.luggage ?? 0))} • Hand carry: ${escapeHtml(String(b.handCarry ?? 0))}</div><div class="luggage-breakdown">Large: ${escapeHtml(String(b.largeLuggage ?? 0))} • Medium: ${escapeHtml(String(b.mediumLuggage ?? 0))} • Small: ${escapeHtml(String(b.smallLuggage ?? 0))}</div></div><p>${escapeHtml(b.language)} • Vehicle: <b>${escapeHtml(b.vehicleType||'Not specified')}</b></p>${b.flightNumber||b.flightType||b.terminal||b.meetInstructions?`<div class="flight-details"><b>✈️ FLIGHT DETAILS</b><br>${b.flightType?`Trip: ${escapeHtml(b.flightType)}<br>`:''}${b.flightNumber?`Flight: <b>${escapeHtml(b.flightNumber)}</b><br>`:''}${b.flightDate||b.flightTime?`Flight schedule: ${escapeHtml(formatDateTime(b.flightDate,b.flightTime))}<br>`:''}${b.terminal?`Terminal: ${escapeHtml(b.terminal)}<br>`:''}${b.meetInstructions?`Meet / pickup: ${escapeHtml(b.meetInstructions)}`:''}</div>`:''}${b.status==='Accepted'?renderTripStatus(b,false)+driverCard(b,publicProfileCache.get(b.driverUid))+`<div class="whatsapp-actions"><a class="whatsapp-button" href="${adminWhatsAppLink(b,'support')}" target="_blank" rel="noopener">💬 WhatsApp admin</a><a class="whatsapp-button secondary-whatsapp" href="${adminWhatsAppLink(b,'group')}" target="_blank" rel="noopener">👥 Prepare WhatsApp group</a></div>`:`<div class="booking-waiting"><small>Waiting for a matched driver</small><div class="whatsapp-actions"><a class="whatsapp-button" href="${adminWhatsAppLink(b,'support')}" target="_blank" rel="noopener">💬 Contact admin on WhatsApp</a></div></div>`}</div>`).join('');
+  if(!skipRefresh&&list.some(b=>b.driverUid)) refreshCustomerDriverProfiles();
 }
 window.startNewBooking=()=>{
   if(currentRole!=='customer') return;
@@ -356,8 +371,15 @@ function updatePassengerLuggagePreview(){
   if(lp) lp.textContent=`Luggage: ${checked} checked (${large} large • ${medium} medium • ${small} small) • ${hand} hand carry • Total ${total}`;
   if(totalInput) totalInput.value=total;
 }
-function render(){ renderSchedules(); renderJobs(); renderCustomerBookings(); const total=bookings.length,availableCount=bookings.filter(b=>b.status==='Available').length,accepted=bookings.filter(b=>b.status==='Accepted').length,completed=bookings.filter(b=>b.status==='Completed').length; $('#adminStats').innerHTML=`<div class="stat"><b>${total}</b><small>Total</small></div><div class="stat"><b>${availableCount}</b><small>Available</small></div><div class="stat"><b>${accepted}</b><small>Accepted</small></div><div class="stat"><b>${completed}</b><small>Completed</small></div>`; const list=filter==='All'?bookings:bookings.filter(b=>b.status===filter); $('#adminBookings').innerHTML=list.length?list.map(b=>`<div class="booking"><h3>${escapeHtml(b.id)} <span class="badge">${escapeHtml(b.status)}</span></h3><p><b>${escapeHtml(b.pickup)}</b> → ${escapeHtml(b.destination)}</p>${locationLinks(b,false)}<div class="trip-schedule compact"><span>🗓 TRIP SCHEDULE</span><strong>${escapeHtml(formatDate(b.date))}</strong><b>${escapeHtml(formatTime(b.time))}</b></div><p>${escapeHtml(b.name)} • ${escapeHtml(b.phone)}</p><p>Vehicle: <b>${escapeHtml(b.vehicleType||'Not specified')}</b> • Language: ${escapeHtml(b.language||'Any')} • Luggage: <b>${escapeHtml(String(b.luggage ?? 0))}</b></p>${b.flightNumber||b.flightType||b.terminal||b.meetInstructions?`<div class="flight-details"><b>✈️ FLIGHT DETAILS</b><br>${b.flightType?`Trip: ${escapeHtml(b.flightType)}<br>`:''}${b.flightNumber?`Flight: <b>${escapeHtml(b.flightNumber)}</b><br>`:''}${b.flightDate||b.flightTime?`Flight schedule: ${escapeHtml(formatDateTime(b.flightDate,b.flightTime))}<br>`:''}${b.terminal?`Terminal: ${escapeHtml(b.terminal)}<br>`:''}${b.meetInstructions?`Meet / pickup: ${escapeHtml(b.meetInstructions)}`:''}</div>`:''}<small>${b.driver?`Driver: ${escapeHtml(b.driver)} • ${escapeHtml(b.driverCarModel||'')} • ${escapeHtml(b.driverCarColor||'')} • Plate: ${escapeHtml(b.driverPlateNumber||'')}`:'No driver yet'}</small>${b.status==='Accepted'&&currentRole==='admin'?`<button class="secondary complete" onclick="completeJob('${escapeHtml(b.docId)}')">Mark completed</button>`:''}</div>`).join(''):'<p class="muted">No bookings.</p>'; }
-window.completeJob=async id=>{const booking=bookings.find(x=>x.docId===id||x.id===id);if(!booking||!firebaseReady||currentRole!=='admin')return;try{await window.FB.updateDoc(window.FB.doc(db,'bookings',booking.docId),{status:'Completed',completedAt:window.FB.serverTimestamp()});}catch(e){alert('Could not complete booking: '+e.message);}};
+function render(){
+  renderSchedules(); renderJobs(); renderCustomerBookings();
+  const total=bookings.length,availableCount=bookings.filter(b=>b.status==='Available').length,accepted=bookings.filter(b=>b.status==='Accepted').length,completed=bookings.filter(b=>b.status==='Completed').length;
+  $('#adminStats').innerHTML=`<div class="stat"><b>${total}</b><small>Total</small></div><div class="stat"><b>${availableCount}</b><small>Available</small></div><div class="stat"><b>${accepted}</b><small>Accepted</small></div><div class="stat"><b>${completed}</b><small>Completed</small></div>`;
+  const list=filter==='All'?bookings:bookings.filter(b=>b.status===filter);
+  $('#adminBookings').innerHTML=list.length?list.map(b=>`<div class="booking"><h3>${escapeHtml(b.id)} <span class="badge">${escapeHtml(b.status)}</span></h3><p><b>${escapeHtml(b.pickup)}</b> → ${escapeHtml(b.destination)}</p>${locationLinks(b,false)}<div class="trip-schedule compact"><span>🗓 TRIP SCHEDULE</span><strong>${escapeHtml(formatDate(b.date))}</strong><b>${escapeHtml(formatTime(b.time))}</b></div><p>${escapeHtml(b.name)} • ${escapeHtml(b.phone)}</p><p>Vehicle: <b>${escapeHtml(b.vehicleType||'Not specified')}</b> • Language: ${escapeHtml(b.language||'Any')} • Luggage: <b>${escapeHtml(String(b.luggage ?? 0))}</b></p>${b.flightNumber||b.flightType||b.terminal||b.meetInstructions?`<div class="flight-details"><b>✈️ FLIGHT DETAILS</b><br>${b.flightType?`Trip: ${escapeHtml(b.flightType)}<br>`:''}${b.flightNumber?`Flight: <b>${escapeHtml(b.flightNumber)}</b><br>`:''}${b.flightDate||b.flightTime?`Flight schedule: ${escapeHtml(formatDateTime(b.flightDate,b.flightTime))}<br>`:''}${b.terminal?`Terminal: ${escapeHtml(b.terminal)}<br>`:''}${b.meetInstructions?`Meet / pickup: ${escapeHtml(b.meetInstructions)}`:''}</div>`:''}<div class="admin-trip-summary">${renderTripStatus(b,false)}</div><small>${b.driver?`Driver: ${escapeHtml(b.driver)} • ${escapeHtml(b.driverCarModel||'')} • ${escapeHtml(b.driverCarColor||'')} • Plate: ${escapeHtml(b.driverPlateNumber||'')} • WhatsApp: ${escapeHtml(b.driverWhatsApp||'Not provided')}`:'No driver yet'}</small><div class="whatsapp-actions"><a class="whatsapp-button" href="${adminWhatsAppLink(b,'support')}" target="_blank" rel="noopener">💬 Open admin WhatsApp</a>${b.status==='Accepted'?`<a class="whatsapp-button secondary-whatsapp" href="${adminWhatsAppLink(b,'group')}" target="_blank" rel="noopener">👥 Prepare WhatsApp group</a>`:''}</div>${b.status==='Accepted'&&currentRole==='admin'?`<button class="secondary complete" onclick="completeJob('${escapeHtml(b.docId)}')">Mark completed</button>`:''}</div>`).join(''):'<p class="muted">No bookings.</p>';
+}
+
+window.completeJob=async id=>{window.completeJob=async id=>{const booking=bookings.find(x=>x.docId===id||x.id===id);if(!booking||!firebaseReady||currentRole!=='admin')return;try{await window.FB.updateDoc(window.FB.doc(db,'bookings',booking.docId),{status:'Completed',tripStatus:'Completed',tripStatusUpdatedAt:window.FB.serverTimestamp(),completedAt:window.FB.serverTimestamp()});}catch(e){alert('Could not complete booking: '+e.message);}};
 $$('.filter').forEach(x=>x.onclick=()=>{$$('.filter').forEach(y=>y.classList.remove('active'));x.classList.add('active');filter=x.dataset.filter;render();});
 $('#clearAll').onclick=()=>alert('Cloud data is protected.');
 function escapeHtml(value){return String(value??'').replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));}
