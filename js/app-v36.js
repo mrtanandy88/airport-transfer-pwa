@@ -115,6 +115,14 @@ function loadDriverProfileUI() {
   $('#driverWhatsAppProfile').value = p.whatsappNumber || '';
   setSelected($('#driverLanguagesProfile'), p.languages || driverProfile?.languages || []);
   renderDriverPhotoPreview(p);
+  const summaryName=$('#driverProfileNameSummary');
+  const summaryVehicle=$('#driverProfileVehicleSummary');
+  const summaryWhatsApp=$('#driverProfileWhatsAppSummary');
+  const meta=$('#driverProfileMeta');
+  if(summaryName) summaryName.textContent=p.displayName || 'My Profile';
+  if(summaryVehicle) summaryVehicle.textContent=[p.carModel,p.carColor,p.plateNumber].filter(Boolean).join(' • ') || 'Vehicle details not set';
+  if(summaryWhatsApp) summaryWhatsApp.textContent=p.whatsappNumber ? '💬 '+p.whatsappNumber : '💬 WhatsApp not provided';
+  if(meta) meta.innerHTML='<span>🚗 <b>'+escapeHtml(p.vehicleType||'Not set')+'</b></span><span>🗣️ '+escapeHtml((p.languages||[]).join(', ')||'No languages set')+'</span>';
 }
 function renderDriverPhotoPreview(p) {
   const items = [];
