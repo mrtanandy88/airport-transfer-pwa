@@ -151,3 +151,14 @@ main{width:100%;padding:16px}
   .driver-quick{padding:10px;font-size:12px}
   .driver-avatar{width:62px;height:62px;min-width:62px}
 }
+
+/* V21.9.1 driver profile header fix */
+.driver-profile-top{display:grid!important;grid-template-columns:72px minmax(0,1fr) auto;align-items:center;gap:14px}
+.driver-profile-summary{min-width:0!important}
+.driver-profile-summary h3{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.driver-edit-toggle{width:auto!important;min-width:74px!important;flex:none!important;display:inline-flex!important;align-items:center;justify-content:center}
+@media(max-width:600px){
+  .driver-profile-top{grid-template-columns:62px minmax(0,1fr) auto;gap:10px}
+  .driver-avatar{width:62px;height:62px;min-width:62px}
+  .driver-edit-toggle{min-width:68px!important;padding:9px 10px!important;font-size:13px}
+}
