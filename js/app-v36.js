@@ -437,7 +437,7 @@ function driverJobFeeHtml(b){
 function adminJobFeeHtml(b){
   const fee=jobFees[b.docId];
   const current=fee && Number.isFinite(Number(fee.fee)) ? 'Current: RM '+Number(fee.fee).toFixed(2) : 'Not set';
-  return '<div class="admin-job-fee"><b>Driver job fee:</b> '+escapeHtml(current)+' <button class="secondary" type="button" onclick="setJobFee(\\''+escapeHtml(b.docId)+'\\'')">Set / change fee</button></div>';
+  return '<div class="admin-job-fee"><b>Driver job fee:</b> '+escapeHtml(current)+' <button class="secondary" type="button" data-fee-id="'+escapeHtml(b.docId)+'" onclick="setJobFee(this.dataset.feeId)">Set / change fee</button></div>';
 }
 function renderJobs(){
   if(currentRole!=='driver'){ $('#driverJobs').innerHTML=''; return; }
