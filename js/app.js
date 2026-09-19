@@ -336,51 +336,61 @@ async function updateTripStatus(id,nextStatus){
     // Read the latest Firestore document inside a transaction.
     // This prevents a second/stale tap from producing a misleading
     // permission-denied error after the first update already succeeded.
-    const changed=await window.FB.runTransaction(db,async transaction=>{
-      const snap=await transaction.get(ref);
-      if(!snap.exists()) throw new Error('Booking no longer exists.');
+    const snap=await window.FB.getDoc(ref);
+    if(!snap.exists()) throw new Error('Booking no longer exists.');
 
-      const latest=snap.data();
-      if(latest.driverUid!==currentUser.uid){
-        const err=new Error('This booking is assigned to another driver.');
-        err.code='booking-owner-mismatch';
-        throw err;
-      }
+    const latest=snap.data();
+    const current=TRIP_STATUSES.includes(latest.tripStatus)
+      ? latest.tripStatus
+      : (latest.status==='Completed'?'Completed':'Accepted');
 
-      const current=TRIP_STATUSES.includes(latest.tripStatus)
-        ? latest.tripStatus
-        : (latest.status==='Completed'?'Completed':'Accepted');
+    const expected=expectedMap[current];
 
-      const expected=expectedMap[current];
+    if(current===nextStatus){
+      const fresh={docId:snap.id,...latest};
+      bookings=bookings.map(x=>x.docId===fresh.docId?fresh:x);
+      driverAccepted=driverAccepted.map(x=>x.docId===fresh.docId?fresh:x);
+      renderJobs();
+      return;
+    }
 
-      // Already updated by an earlier tap/request. Treat this as success.
-      if(current===nextStatus) return false;
+    if(latest.driverUid!==currentUser.uid){
+      const err=new Error('This booking is assigned to another driver.');
+      err.code='booking-owner-mismatch';
+      throw err;
+    }
 
-      if(expected!==nextStatus){
-        const err=new Error('The trip is already at '+(TRIP_STATUS_LABELS[current]||current)+'.');
-        err.code='trip-status-already-advanced';
-        throw err;
-      }
+    if(expected!==nextStatus){
+      const err=new Error('The trip is already at '+(TRIP_STATUS_LABELS[current]||current)+'.');
+      err.code='trip-status-already-advanced';
+      throw err;
+    }
 
-      const timestampField={
-        OnTheWay:'onTheWayAt',
-        ArrivedPickup:'arrivedPickupAt',
-        PickedUp:'pickedUpAt',
-        ArrivedDestination:'arrivedDestinationAt',
-        DroppedOff:'droppedOffAt',
-        Completed:'completedAt'
-      }[nextStatus];
+    const timestampField={
+      OnTheWay:'onTheWayAt',
+      ArrivedPickup:'arrivedPickupAt',
+      PickedUp:'pickedUpAt',
+      ArrivedDestination:'arrivedDestinationAt',
+      DroppedOff:'droppedOffAt',
+      Completed:'completedAt'
+    }[nextStatus];
 
-      const payload={
-        tripStatus:nextStatus,
-        tripStatusUpdatedAt:window.FB.serverTimestamp()
-      };
-      if(timestampField) payload[timestampField]=window.FB.serverTimestamp();
-      if(nextStatus==='Completed') payload.status='Completed';
+    const payload={
+      tripStatus:nextStatus,
+      tripStatusUpdatedAt:window.FB.serverTimestamp()
+    };
+    if(timestampField) payload[timestampField]=window.FB.serverTimestamp();
+    if(nextStatus==='Completed') payload.status='Completed';
 
-      transaction.update(ref,payload);
-      return true;
-    });
+    await window.FB.updateDoc(ref,payload);
+
+    const freshSnap=await window.FB.getDoc(ref);
+    if(freshSnap.exists()){
+      const fresh={docId:freshSnap.id,...freshSnap.data()};
+      bookings=bookings.map(x=>x.docId===fresh.docId?fresh:x);
+      driverAccepted=driverAccepted.map(x=>x.docId===fresh.docId?fresh:x);
+      renderJobs();
+    }
 
     if(changed){
       // onSnapshot will refresh the card automatically.
