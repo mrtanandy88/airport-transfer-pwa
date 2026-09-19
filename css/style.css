@@ -34,3 +34,42 @@
 /* V21: live trip tracking + WhatsApp */
 .trip-status{margin:14px 0;padding:14px;border:1px solid #dbe2ea;border-radius:14px;background:#fff}.trip-status-header{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px}.trip-status-header>b{font-size:.8rem;letter-spacing:.08em;color:#475569}.trip-status-current{font-weight:800;font-size:.9rem;text-align:right}.trip-status-timeline{display:grid;gap:7px}.trip-status-step{display:grid;grid-template-columns:30px 1fr;gap:8px;align-items:center;padding:7px 8px;border-radius:9px;color:#94a3b8}.trip-status-step.done{color:#334155;background:#f8fafc}.trip-status-step.current{outline:2px solid #cbd5e1;background:#eef2ff;color:#111827}.trip-status-icon{font-size:17px;text-align:center}.trip-status-step strong{display:block;font-size:.88rem}.trip-status-step small{display:block;color:#64748b;margin-top:2px}.trip-status-button{width:100%;margin-top:12px;border:0;border-radius:10px;background:#111827;color:#fff;padding:12px;font-weight:800}.whatsapp-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.whatsapp-button{display:inline-block;text-decoration:none;border-radius:10px;padding:10px 12px;background:#166534;color:#fff;font-weight:800;font-size:.88rem}.secondary-whatsapp{background:#f0fdf4;color:#166534;border:1px solid #86efac}.admin-trip-summary{margin-top:12px}.booking-waiting{margin-top:12px}.driver-customer-details+.trip-status{margin-top:14px}
 @media(max-width:520px){.trip-status-header{align-items:flex-start;flex-direction:column}.trip-status-current{text-align:left}.whatsapp-actions{display:grid;grid-template-columns:1fr}.whatsapp-button{text-align:center}}
+
+/* V21.1 mobile responsiveness */
+html,body{width:100%;max-width:100%;overflow-x:hidden}
+button,a,input,select{touch-action:manipulation}
+button{cursor:pointer}
+img{max-width:100%}
+.topbar{min-height:58px}
+.topbar>div{min-width:0}
+.topbar strong,.topbar span{vertical-align:middle}
+main{width:100%;padding:16px}
+.panel,.card,.booking{min-width:0}
+.booking h3,.driver-job-route h3,.location-block>span{overflow-wrap:anywhere}
+.location-actions,.whatsapp-actions{width:100%}
+.location-actions>*{flex:1 1 140px;min-width:0}
+@media(max-width:520px){
+  body{padding-bottom:82px}
+  .topbar{padding:12px 14px}
+  .topbar .ghost{padding:8px 10px;font-size:12px}
+  main{padding:12px}
+  .hero{padding:20px 2px 14px}
+  .hero h1{font-size:30px}
+  .card,.panel,.booking{padding:14px;border-radius:14px}
+  .primary,.secondary,.danger,.accept,.complete,.trip-status-button{min-height:46px}
+  .two{grid-template-columns:1fr}
+  .customer-bookings-header{display:grid;grid-template-columns:1fr;gap:10px}
+  .customer-bookings-header .secondary{width:100%;white-space:normal}
+  .driver-job-info{grid-template-columns:1fr}
+  .driver-job-route h3{font-size:1.12rem!important;line-height:1.35}
+  .driver-schedule-time{font-size:1.45rem}
+  .stats{grid-template-columns:1fr 1fr}
+  .bottom{padding:6px 4px}
+  .bottom button{min-height:46px;padding:7px 4px;font-size:11px}
+}
+@media(max-width:360px){
+  .topbar span{display:none}
+  .hero h1{font-size:27px}
+  main{padding:10px}
+  .bottom button{font-size:10px}
+}
