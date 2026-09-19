@@ -397,7 +397,11 @@ async function updateTripStatus(id,nextStatus){
     if(e.code==='trip-status-already-advanced'){
       renderJobs();
     }else{
-      alert('Could not update trip status ('+(e.code||'error')+'): '+e.message);
+      alert('Could not update trip status ('+(e.code||'error')+'): '+e.message+
+        '\\n\\nDriver UID: '+(currentUser?.uid||'none')+
+        '\\nBooking Driver UID: '+(booking?.driverUid||'none')+
+        '\\nBooking Status: '+(booking?.status||'none')+
+        '\\nTrip Status: '+(booking?.tripStatus||'none'));
     }
   }finally{
     tripStatusInFlight.delete(key);
