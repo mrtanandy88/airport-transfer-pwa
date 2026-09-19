@@ -144,6 +144,19 @@ service cloud.firestore {
       allow delete: if admin();
     }
 
+
+    // =========================================================
+    // DRIVER JOB FEES
+    // =========================================================
+
+    match /driverJobFees/{bookingId} {
+      // Drivers can see job fees. Customers have no read access.
+      allow read: if signedIn() && (role('driver') || admin());
+
+      // Only admin can create, change or delete job fees.
+      allow create, update, delete: if admin();
+    }
+
     match /driverSchedules/{id} {
       allow create: if signedIn() && role('driver')
         && request.auth.uid == request.resource.data.driverUid;
