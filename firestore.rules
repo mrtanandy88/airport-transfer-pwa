@@ -109,13 +109,12 @@ service cloud.firestore {
           ]))
 
         // Driver updates live trip status.
-        // Authorization uses the booking's driverUid directly.
+        // Keep this rule deliberately simple for the RM0 MVP:
+        // the existing booking owner may only move the trip one step forward.
         || (signedIn()
           && resource.data.driverUid == request.auth.uid
           && resource.data.status == 'Accepted'
           && request.resource.data.driverUid == resource.data.driverUid
-          && validTripStatus(request.resource.data.tripStatus)
-
           && (
             (resource.data.tripStatus == 'Accepted' && request.resource.data.tripStatus == 'OnTheWay')
             || (resource.data.tripStatus == 'OnTheWay' && request.resource.data.tripStatus == 'ArrivedPickup')
@@ -124,18 +123,23 @@ service cloud.firestore {
             || (resource.data.tripStatus == 'ArrivedDestination' && request.resource.data.tripStatus == 'DroppedOff')
             || (resource.data.tripStatus == 'DroppedOff' && request.resource.data.tripStatus == 'Completed')
           )
-
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'tripStatus','tripStatusUpdatedAt','onTheWayAt','arrivedPickupAt','pickedUpAt',
-            'arrivedDestinationAt','droppedOffAt','completedAt','status'
+            'tripStatus',
+            'tripStatusUpdatedAt',
+            'onTheWayAt',
+            'arrivedPickupAt',
+            'pickedUpAt',
+            'arrivedDestinationAt',
+            'droppedOffAt',
+            'completedAt',
+            'status'
           ])
-
           && (
             (request.resource.data.tripStatus != 'Completed'
               && request.resource.data.status == resource.data.status)
             || (request.resource.data.tripStatus == 'Completed'
               && request.resource.data.status == 'Completed')
-          ));
+          ))
 
       allow delete: if admin();
     }
