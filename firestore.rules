@@ -114,7 +114,6 @@ service cloud.firestore {
           && resource.data.driverUid == request.auth.uid
           && resource.data.status == 'Accepted'
           && request.resource.data.driverUid == resource.data.driverUid
-          && request.resource.data.vehicleType == resource.data.vehicleType
           && validTripStatus(request.resource.data.tripStatus)
 
           && (
