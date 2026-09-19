@@ -440,15 +440,83 @@ function adminJobFeeHtml(b){
   return '<div class="admin-job-fee"><b>Driver job fee:</b> '+escapeHtml(current)+' <button class="secondary" type="button" data-fee-id="'+escapeHtml(b.docId)+'" onclick="setJobFee(this.dataset.feeId)">Set / change fee</button></div>';
 }
 function renderJobs(){
-  if(currentRole!=='driver'){ $('#driverJobs').innerHTML=''; return; }
-  const accepted=driverAccepted.filter(b=>b.status==='Accepted').sort((a,b)=>String(a.date+a.time).localeCompare(String(b.date+b.time)));
-  const available=driverAvailable.filter(b=>b.status==='Available'&&canDriverTake(b)).sort((a,b)=>String(a.date+a.time).localeCompare(String(b.date+b.time)));
-  const flightDetails=b=>(b.flightNumber||b.flightType||b.terminal||b.meetInstructions)?`<div class="driver-flight-details"><h4>✈️ FLIGHT DETAILS</h4>${b.flightType?`<div>Trip: ${escapeHtml(b.flightType)}</div>`:''}${b.flightNumber?`<div>Flight: <b>${escapeHtml(b.flightNumber)}</b></div>`:''}${b.flightDate||b.flightTime?`<div>Flight schedule: ${escapeHtml(formatDateTime(b.flightDate,b.flightTime))}</div>`:''}${b.terminal?`<div>Terminal: ${escapeHtml(b.terminal)}</div>`:''}${b.meetInstructions?`<div>Meet: ${escapeHtml(b.meetInstructions)}</div>`:''}</div>`:'';
-  const card=b=>{ const isAccepted=b.status==='Accepted'; return `<div class="booking driver-job-card ${isAccepted?'accepted-job':''}">${isAccepted?'<div class="job-status-row"><span class="badge">ACCEPTED</span></div>':''}<div class="driver-job-route"><h3>${escapeHtml(b.pickup)} → ${escapeHtml(b.destination)}</h3></div><div class="driver-trip-schedule"><div class="driver-schedule-label">🗓 TRIP SCHEDULE</div><div class="driver-schedule-date">${escapeHtml(formatDate(b.date))}</div><div class="driver-schedule-time">${escapeHtml(formatTime(b.time))}</div></div><div class="driver-job-info"><div>👤 <b>${escapeHtml(String(b.passengers))}</b> passenger${Number(b.passengers)===1?'':'s'}</div><div>🧳 <b>${escapeHtml(String(b.luggage ?? 0))}</b> luggage</div><div>🚗 <b>${escapeHtml(b.vehicleType||'Not specified')}</b></div><div>🗣️ <b>${escapeHtml(b.language||'Any')}</b></div></div>${driverJobFeeHtml(b)}${locationLinks(b,true)}${flightDetails(b)}${isAccepted?`<div class="driver-customer-details">Customer: <b>${escapeHtml(b.name||'')}</b><br>Phone: <b>${escapeHtml(b.phone||'')}</b><br><small>Booking ID: ${escapeHtml(b.id)}</small></div>${renderTripStatus(b,true)}<div class="whatsapp-actions"><a class="whatsapp-button" href="${adminWhatsAppLink(b,'support')}" target="_blank" rel="noopener">💬 WhatsApp admin</a></div>`:`<div class="driver-match-reason">${escapeHtml(matchReasons(b).join(' • '))}</div><button class="accept" onclick="acceptJob('${escapeHtml(b.docId)}')">Accept job</button>`}</div>`; };
-  const acceptedHtml=accepted.length?`<div class="driver-section-title"><h3>My accepted jobs</h3><span>${accepted.length} active job${accepted.length===1?'':'s'}</span></div>`+accepted.map(card).join(''):'<div class="driver-section-title"><h3>My accepted jobs</h3><span>No active jobs</span></div>';
-  const availableHtml=available.length?`<div class="driver-section-title matched-title"><h3>Matched jobs available</h3><span>${available.length} job${available.length===1?'':'s'} to review</span></div>`+available.map(card).join(''):'<div class="driver-section-title matched-title"><h3>Matched jobs available</h3><span>No matching jobs right now</span></div>';
-  $('#driverJobs').innerHTML=acceptedHtml+availableHtml;
+  if(currentRole!=='driver'){
+    ['#driverAcceptedJobs','#driverAvailableJobs','#driverCompletedJobs','#driverJobs'].forEach(id=>{const el=$(id);if(el)el.innerHTML='';});
+    return;
+  }
+
+  const accepted=driverAccepted
+    .filter(b=>b.status==='Accepted')
+    .sort((a,b)=>String(a.date+a.time).localeCompare(String(b.date+b.time)));
+
+  const completed=driverAccepted
+    .filter(b=>b.status==='Completed')
+    .sort((a,b)=>String(b.completedAt?.seconds||0).toString().localeCompare(String(a.completedAt?.seconds||0)));
+
+  const available=driverAvailable
+    .filter(b=>b.status==='Available'&&canDriverTake(b))
+    .sort((a,b)=>String(a.date+a.time).localeCompare(String(b.date+b.time)));
+
+  const flightDetails=b=>(b.flightNumber||b.flightType||b.terminal||b.meetInstructions)
+    ? '<div class="driver-flight-details"><h4>✈️ FLIGHT DETAILS</h4>'+
+      (b.flightType?'<div>Trip: '+escapeHtml(b.flightType)+'</div>':'')+
+      (b.flightNumber?'<div>Flight: <b>'+escapeHtml(b.flightNumber)+'</b></div>':'')+
+      (b.flightDate||b.flightTime?'<div>Flight schedule: '+escapeHtml(formatDateTime(b.flightDate,b.flightTime))+'</div>':'')+
+      (b.terminal?'<div>Terminal: '+escapeHtml(b.terminal)+'</div>':'')+
+      (b.meetInstructions?'<div>Meet: '+escapeHtml(b.meetInstructions)+'</div>':'')+
+      '</div>'
+    : '';
+
+  const acceptedCard=b=>'<article class="driver-clean-job accepted-job">'+
+    '<div class="clean-job-top"><span class="clean-job-icon">✈️</span><div class="clean-job-main">'+
+      '<span class="badge">ON TRIP</span><h3>'+escapeHtml(b.id)+'</h3><p>'+escapeHtml(b.pickup)+' → '+escapeHtml(b.destination)+'</p>'+
+    '</div><span class="clean-job-status">Accepted</span></div>'+
+    '<div class="clean-job-meta"><span>🗓 '+escapeHtml(formatDate(b.date))+'</span><span>⏰ '+escapeHtml(formatTime(b.time))+'</span><span>👤 '+escapeHtml(String(b.passengers))+'</span></div>'+
+    driverJobFeeHtml(b)+
+    '<details class="clean-job-details"><summary>View trip details</summary>'+
+      '<div class="clean-job-details-body">'+locationLinks(b,true)+flightDetails(b)+
+      '<div class="driver-customer-details">Customer: <b>'+escapeHtml(b.name||'')+'</b><br>Phone: <b>'+escapeHtml(b.phone||'')+'</b><br><small>Booking ID: '+escapeHtml(b.id)+'</small></div>'+
+      renderTripStatus(b,true)+
+      '<div class="whatsapp-actions"><a class="whatsapp-button" href="'+adminWhatsAppLink(b,'support')+'" target="_blank" rel="noopener">💬 WhatsApp admin</a></div>'+
+      '</div></details></article>';
+
+  const availableCard=b=>'<article class="driver-clean-job available-job">'+
+    '<div class="clean-job-top"><span class="clean-job-icon">🔎</span><div class="clean-job-main">'+
+      '<span class="badge">MATCHED</span><h3>'+escapeHtml(b.id)+'</h3><p>'+escapeHtml(b.pickup)+' → '+escapeHtml(b.destination)+'</p>'+
+    '</div></div>'+
+    '<div class="clean-job-meta"><span>🗓 '+escapeHtml(formatDate(b.date))+'</span><span>⏰ '+escapeHtml(formatTime(b.time))+'</span><span>👤 '+escapeHtml(String(b.passengers))+'</span></div>'+
+    '<div class="driver-job-fee pending">💰 <b>Job fee: '+escapeHtml(formatJobFee(jobFees[b.docId]?.fee))+'</b></div>'+
+    '<details class="clean-job-details"><summary>View job details</summary><div class="clean-job-details-body">'+
+      locationLinks(b,true)+flightDetails(b)+
+      '<div class="driver-match-reason">'+escapeHtml(matchReasons(b).join(' • '))+'</div>'+
+      '<button class="accept accept-clean" onclick="acceptJob(\''+escapeHtml(b.docId)+'\')">✓ Accept this job</button>'+
+    '</div></details></article>';
+
+  const completedCard=b=>'<article class="driver-clean-job completed-job">'+
+    '<div class="clean-job-top"><span class="clean-job-icon">🎉</span><div class="clean-job-main">'+
+      '<span class="badge completed-badge">COMPLETED</span><h3>'+escapeHtml(b.id)+'</h3><p>'+escapeHtml(b.pickup)+' → '+escapeHtml(b.destination)+'</p>'+
+    '</div></div>'+
+    '<div class="clean-job-meta"><span>🗓 '+escapeHtml(formatDate(b.date))+'</span><span>⏰ '+escapeHtml(formatTime(b.time))+'</span><span>👤 '+escapeHtml(String(b.passengers))+'</span></div>'+
+    driverJobFeeHtml(b)+
+    '<details class="clean-job-details"><summary>View completed trip</summary><div class="clean-job-details-body">'+
+      '<div class="driver-customer-details">Customer: <b>'+escapeHtml(b.name||'')+'</b><br>Phone: <b>'+escapeHtml(b.phone||'')+'</b><br><small>Booking ID: '+escapeHtml(b.id)+'</small></div>'+
+      locationLinks(b,true)+
+    '</div></details></article>';
+
+  const section=(icon,title,count,subtitle,items,empty,cls)=>'<div class="driver-section-heading '+cls+'"><div><h3>'+icon+' '+title+'</h3><span>'+escapeHtml(subtitle)+'</span></div><b>'+count+'</b></div>'+
+    (items.length?items.join(''):'<div class="driver-empty-state">'+empty+'</div>');
+
+  const a=$('#driverAcceptedJobs'), av=$('#driverAvailableJobs'), c=$('#driverCompletedJobs');
+  if(a)a.innerHTML=section('✅','Accepted Jobs',accepted.length,accepted.length===1?'1 current job':accepted.length+' current jobs',accepted.map(acceptedCard),'No accepted jobs right now.','accepted-heading');
+  if(av)av.innerHTML=section('🔎','Available Jobs',available.length,available.length===1?'1 matching job waiting':'matching jobs waiting',available.map(availableCard),'No matching jobs right now.','available-heading');
+  if(c)c.innerHTML=section('🎉','Completed Jobs',completed.length,completed.length===1?'1 trip completed':completed.length+' trips completed',completed.map(completedCard),'No completed jobs yet.','completed-heading');
+  const ac=$('#driverAcceptedCount'), avc=$('#driverAvailableCount'), cc=$('#driverCompletedCount');
+  if(ac)ac.textContent=accepted.length;
+  if(avc)avc.textContent=available.length;
+  if(cc)cc.textContent=completed.length;
+  const hidden=$('#driverJobs'); if(hidden)hidden.innerHTML='';
 }
+
 
 async function getPublicDriverProfile(uid){ if(!uid)return null; if(publicProfileCache.has(uid))return publicProfileCache.get(uid); try{const snap=await window.FB.getDoc(window.FB.doc(db,'driverPublicProfiles',uid)); const p=snap.exists()?snap.data():null; publicProfileCache.set(uid,p); return p;}catch(e){console.error('Driver profile read failed',e);return null;} }
 async function refreshCustomerDriverProfiles(){ if(currentRole!=='customer')return; const ids=[...new Set(bookings.filter(b=>b.driverUid).map(b=>b.driverUid))]; await Promise.all(ids.map(getPublicDriverProfile)); renderCustomerBookings(true); }
