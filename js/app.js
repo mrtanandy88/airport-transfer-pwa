@@ -392,19 +392,6 @@ async function updateTripStatus(id,nextStatus){
       renderJobs();
     }
 
-    if(changed){
-      // onSnapshot will refresh the card automatically.
-      renderJobs();
-    }else{
-      // The same transition was already completed; refresh the UI.
-      const snap=await window.FB.getDoc(ref);
-      if(snap.exists()){
-        const fresh={docId:snap.id,...snap.data()};
-        bookings=bookings.map(x=>x.docId===fresh.docId?fresh:x);
-        driverAccepted=driverAccepted.map(x=>x.docId===fresh.docId?fresh:x);
-        renderJobs();
-      }
-    }
   }catch(e){
     console.error('Trip status update failed:',e);
     if(e.code==='trip-status-already-advanced'){
