@@ -125,10 +125,10 @@ function loadDriverProfileUI() {
   if(meta) meta.innerHTML='<span>🚗 <b>'+escapeHtml(p.vehicleType||'Not set')+'</b></span><span>🗣️ '+escapeHtml((p.languages||[]).join(', ')||'No languages set')+'</span>';
 }
 function renderDriverPhotoPreview(p) {
-  const items = [];
-  if (p.selfieDataUrl) items.push(`<div><img src="${p.selfieDataUrl}" alt="Driver selfie"><small>Driver photo</small></div>`);
-  if (p.carPhotoDataUrl) items.push(`<div><img src="${p.carPhotoDataUrl}" alt="Driver car"><small>Vehicle photo</small></div>`);
-  $('#driverPhotoPreview').innerHTML = items.length ? items.join('') : '<p class="muted">No driver photos uploaded yet.</p>';
+  const photo=p?.selfieDataUrl||'';
+  $('#driverPhotoPreview').innerHTML=photo
+    ? '<img src="'+photo+'" alt="Driver photo" class="driver-avatar-image">'
+    : '<div class="driver-avatar-placeholder">👤</div>';
 }
 function normalizePlate(v) { return String(v || '').trim().toUpperCase(); }
 function validPlate(v) { return normalizePlate(v).length >= 2; }
