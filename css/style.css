@@ -75,3 +75,79 @@ main{width:100%;padding:16px}
 }
 
 .driver-job-fee,.admin-job-fee{margin:12px 0;padding:12px 14px;border-radius:12px;background:#f1f5f9}.driver-job-fee{font-size:16px}.admin-job-fee{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.admin-job-fee button{margin-left:auto}
+
+
+/* =========================================================
+   V21.9 DRIVER DASHBOARD
+   ========================================================= */
+.driver-dashboard-header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:6px 0 16px}
+.driver-dashboard-header h3{margin:3px 0;font-size:24px}
+.eyebrow{font-size:11px;letter-spacing:.14em;font-weight:800;color:#64748b}
+.driver-online{display:inline-flex;align-items:center;gap:7px;padding:9px 13px;border-radius:999px;background:#dcfce7;color:#166534;font-weight:800;font-size:13px;white-space:nowrap}
+.driver-online i{width:9px;height:9px;border-radius:50%;background:#22c55e;display:inline-block}
+.driver-profile-card{padding:18px!important}
+.driver-profile-top{display:flex;align-items:center;gap:14px}
+.driver-avatar{width:72px;height:72px;min-width:72px;border-radius:50%;overflow:hidden;background:#e2e8f0;display:grid;place-items:center;border:3px solid #dbeafe}
+.driver-avatar-image{width:100%;height:100%;object-fit:cover;display:block}
+.driver-avatar-placeholder{font-size:30px}
+.driver-profile-summary{min-width:0;flex:1}
+.driver-profile-summary h3{margin:0 0 3px;font-size:20px}
+.driver-profile-summary p{margin:3px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.driver-edit-toggle{white-space:nowrap;padding:10px 12px!important}
+.driver-profile-meta{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0 0;padding-top:13px;border-top:1px solid #e2e8f0;color:#475569;font-size:13px}
+.driver-profile-meta span{padding:7px 10px;border-radius:10px;background:#f8fafc}
+.driver-editor{margin-top:14px;border-top:1px solid #e2e8f0;padding-top:12px}
+.driver-editor summary,.driver-schedule-panel summary{cursor:pointer;font-weight:800;color:#334155;padding:4px 0}
+.driver-editor-body{padding-top:12px}
+.driver-quick-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}
+.driver-quick{min-height:92px;border:1px solid #dbe4ef;border-radius:16px;padding:13px;text-align:left;background:#fff;display:flex;flex-direction:column;gap:6px;cursor:pointer;font:inherit;color:#0f172a}
+.driver-quick b{font-size:13px}
+.driver-quick span{font-size:18px;font-weight:900}
+.driver-quick.accepted{background:#ecfdf5;border-color:#bbf7d0}
+.driver-quick.available{background:#eff6ff;border-color:#bfdbfe}
+.driver-quick.completed{background:#f5f3ff;border-color:#ddd6fe}
+.driver-quick.profile{background:#f8fafc}
+.driver-schedule-panel{padding:14px 16px!important;margin-bottom:14px}
+.driver-job-section{margin:18px 0}
+.driver-section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 10px;padding:13px 15px;border-radius:15px}
+.driver-section-heading h3{margin:0 0 2px;font-size:18px}
+.driver-section-heading span{font-size:12px;color:#64748b}
+.driver-section-heading>b{min-width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#fff;font-size:14px}
+.accepted-heading{background:#ecfdf5;border:1px solid #bbf7d0}
+.accepted-heading>b{color:#15803d}
+.available-heading{background:#eff6ff;border:1px solid #bfdbfe}
+.available-heading>b{color:#2563eb}
+.completed-heading{background:#f5f3ff;border:1px solid #ddd6fe}
+.completed-heading>b{color:#7c3aed}
+.driver-clean-job{background:#fff;border:1px solid #e2e8f0;border-radius:17px;padding:15px;margin:10px 0;box-shadow:0 4px 14px rgba(15,23,42,.05)}
+.clean-job-top{display:flex;align-items:flex-start;gap:11px}
+.clean-job-icon{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:#eff6ff;font-size:20px;flex:none}
+.clean-job-main{min-width:0;flex:1}
+.clean-job-main h3{margin:3px 0;font-size:17px}
+.clean-job-main p{margin:0;font-size:14px;font-weight:700;color:#334155;line-height:1.35}
+.clean-job-status{font-size:12px;font-weight:800;color:#15803d;white-space:nowrap}
+.clean-job-meta{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0 8px;color:#475569;font-size:12px}
+.clean-job-meta span{padding:6px 8px;border-radius:9px;background:#f8fafc}
+.clean-job-details{border-top:1px solid #edf2f7;margin-top:10px;padding-top:9px}
+.clean-job-details summary{cursor:pointer;font-weight:800;color:#2563eb;font-size:13px}
+.clean-job-details-body{padding-top:12px}
+.completed-job{border-color:#ddd6fe}
+.completed-badge{background:#ede9fe!important;color:#6d28d9!important}
+.driver-job-fee.pending{background:#f8fafc!important;color:#64748b}
+.accept-clean{width:100%;margin-top:12px}
+.driver-empty-state{padding:18px;border:1px dashed #cbd5e1;border-radius:14px;text-align:center;color:#64748b;background:#f8fafc}
+.driver-job-section .location-details{margin-top:0}
+.driver-job-section .trip-status{margin-top:12px}
+@media(max-width:600px){
+  .driver-dashboard-header{align-items:flex-start}
+  .driver-dashboard-header h3{font-size:22px}
+  .driver-quick-grid{grid-template-columns:repeat(2,1fr)}
+  .driver-quick{min-height:86px}
+  .driver-profile-top{align-items:flex-start}
+  .driver-edit-toggle{padding:8px 10px!important}
+}
+@media(max-width:380px){
+  .driver-quick-grid{gap:7px}
+  .driver-quick{padding:10px;font-size:12px}
+  .driver-avatar{width:62px;height:62px;min-width:62px}
+}
