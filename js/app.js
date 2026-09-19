@@ -13,6 +13,7 @@ const $$ = s => document.querySelectorAll(s);
 
 let bookings = [], schedules = [], driverProfile = null, driverPublicProfile = null;
 let currentUser = null, currentRole = null, db = null, auth = null, firebaseReady = false;
+let jobFees = {};
 let filter = 'All', stopCloudListeners = [], driverAvailable = [], driverAccepted = [];
 const publicProfileCache = new Map();
 const tripStatusInFlight = new Set();
@@ -32,7 +33,7 @@ async function initFirebase() {
     $('#modeNotice').textContent = 'Firebase connected. Matching checks vehicle, language, private schedule and booking time.';
     am.onAuthStateChanged(auth, async user => {
       stopListeners(); currentUser = user; currentRole = null; driverProfile = null; driverPublicProfile = null;
-      bookings = []; schedules = []; driverAvailable = []; driverAccepted = [];
+      bookings = []; schedules = []; driverAvailable = []; driverAccepted = []; jobFees = {};
       if (user) {
         try {
           const snap = await fs.getDoc(fs.doc(db, 'users', user.uid));
@@ -71,10 +72,14 @@ function startCloudListeners() {
     const acceptedQ = F.query(F.collection(db, 'bookings'), F.where('driverUid', '==', currentUser.uid));
     stopCloudListeners.push(F.onSnapshot(availableQ, snap => { rebuildDriverBookings(mergeDocs(snap), null); }, handleCloudError));
     stopCloudListeners.push(F.onSnapshot(acceptedQ, snap => { rebuildDriverBookings(null, mergeDocs(snap)); }, handleCloudError));
+    stopCloudListeners.push(F.onSnapshot(F.collection(db, 'driverJobFees'), snap => { jobFees = Object.fromEntries(snap.docs.map(d => [d.id, d.data()])); renderJobs(); }, handleCloudError));
     const scheduleQ = F.query(F.collection(db, 'driverSchedules'), F.where('driverUid', '==', currentUser.uid));
     stopCloudListeners.push(F.onSnapshot(scheduleQ, snap => { schedules = mergeDocs(snap); renderSchedules(); renderJobs(); cleanupDuplicateSchedules(schedules); }, handleCloudError));
   }
-  if (currentRole === 'admin') stopCloudListeners.push(F.onSnapshot(F.collection(db, 'bookings'), snap => { bookings = mergeDocs(snap); render(); }, handleCloudError));
+  if (currentRole === 'admin') {
+    stopCloudListeners.push(F.onSnapshot(F.collection(db, 'bookings'), snap => { bookings = mergeDocs(snap); render(); }, handleCloudError));
+    stopCloudListeners.push(F.onSnapshot(F.collection(db, 'driverJobFees'), snap => { jobFees = Object.fromEntries(snap.docs.map(d => [d.id, d.data()])); render(); }, handleCloudError));
+  }
 }
 function rebuildDriverBookings(available, accepted) {
   if (available) driverAvailable = available; if (accepted) driverAccepted = accepted;
@@ -421,12 +426,25 @@ async function cleanupDuplicateSchedules(list){ if(!firebaseReady||currentRole!=
 async function deleteSchedule(id){if(!currentUser||currentRole!=='driver')return;if(!confirm('Remove this unavailable time?'))return;try{await window.FB.deleteDoc(window.FB.doc(db,'driverSchedules',id));}catch(e){alert('Could not remove schedule: '+e.message);}}
 window.deleteSchedule=deleteSchedule;
 function renderSchedules(){ $('#scheduleList').innerHTML=schedules.length?schedules.sort((a,b)=>`${a.date}${a.from}`.localeCompare(`${b.date}${b.from}`)).map(s=>`<div class="schedule"><b>${escapeHtml(formatDate(s.date))}</b><span>${escapeHtml(formatTime(s.from))} – ${escapeHtml(formatTime(s.to))} <button class="mini-delete" onclick="deleteSchedule('${escapeHtml(s.docId)}')" type="button">×</button></span></div>`).join(''):'<p class="muted">No unavailable times added.</p>'; }
+function formatJobFee(value){
+  const n=Number(value);
+  return Number.isFinite(n)&&n>=0 ? 'RM '+n.toFixed(2) : 'Fee not set';
+}
+function driverJobFeeHtml(b){
+  const fee=jobFees[b.docId];
+  return '<div class="driver-job-fee">💰 <b>Job fee: '+escapeHtml(formatJobFee(fee?.fee))+'</b></div>';
+}
+function adminJobFeeHtml(b){
+  const fee=jobFees[b.docId];
+  const current=fee && Number.isFinite(Number(fee.fee)) ? 'Current: RM '+Number(fee.fee).toFixed(2) : 'Not set';
+  return '<div class="admin-job-fee"><b>Driver job fee:</b> '+escapeHtml(current)+' <button class="secondary" type="button" onclick="setJobFee(\\''+escapeHtml(b.docId)+'\\'')">Set / change fee</button></div>';
+}
 function renderJobs(){
   if(currentRole!=='driver'){ $('#driverJobs').innerHTML=''; return; }
   const accepted=driverAccepted.filter(b=>b.status==='Accepted').sort((a,b)=>String(a.date+a.time).localeCompare(String(b.date+b.time)));
   const available=driverAvailable.filter(b=>b.status==='Available'&&canDriverTake(b)).sort((a,b)=>String(a.date+a.time).localeCompare(String(b.date+b.time)));
   const flightDetails=b=>(b.flightNumber||b.flightType||b.terminal||b.meetInstructions)?`<div class="driver-flight-details"><h4>✈️ FLIGHT DETAILS</h4>${b.flightType?`<div>Trip: ${escapeHtml(b.flightType)}</div>`:''}${b.flightNumber?`<div>Flight: <b>${escapeHtml(b.flightNumber)}</b></div>`:''}${b.flightDate||b.flightTime?`<div>Flight schedule: ${escapeHtml(formatDateTime(b.flightDate,b.flightTime))}</div>`:''}${b.terminal?`<div>Terminal: ${escapeHtml(b.terminal)}</div>`:''}${b.meetInstructions?`<div>Meet: ${escapeHtml(b.meetInstructions)}</div>`:''}</div>`:'';
-  const card=b=>{ const isAccepted=b.status==='Accepted'; return `<div class="booking driver-job-card ${isAccepted?'accepted-job':''}">${isAccepted?'<div class="job-status-row"><span class="badge">ACCEPTED</span></div>':''}<div class="driver-job-route"><h3>${escapeHtml(b.pickup)} → ${escapeHtml(b.destination)}</h3></div><div class="driver-trip-schedule"><div class="driver-schedule-label">🗓 TRIP SCHEDULE</div><div class="driver-schedule-date">${escapeHtml(formatDate(b.date))}</div><div class="driver-schedule-time">${escapeHtml(formatTime(b.time))}</div></div><div class="driver-job-info"><div>👤 <b>${escapeHtml(String(b.passengers))}</b> passenger${Number(b.passengers)===1?'':'s'}</div><div>🧳 <b>${escapeHtml(String(b.luggage ?? 0))}</b> luggage</div><div>🚗 <b>${escapeHtml(b.vehicleType||'Not specified')}</b></div><div>🗣️ <b>${escapeHtml(b.language||'Any')}</b></div></div>${locationLinks(b,true)}${flightDetails(b)}${isAccepted?`<div class="driver-customer-details">Customer: <b>${escapeHtml(b.name||'')}</b><br>Phone: <b>${escapeHtml(b.phone||'')}</b><br><small>Booking ID: ${escapeHtml(b.id)}</small></div>${renderTripStatus(b,true)}<div class="whatsapp-actions"><a class="whatsapp-button" href="${adminWhatsAppLink(b,'support')}" target="_blank" rel="noopener">💬 WhatsApp admin</a></div>`:`<div class="driver-match-reason">${escapeHtml(matchReasons(b).join(' • '))}</div><button class="accept" onclick="acceptJob('${escapeHtml(b.docId)}')">Accept job</button>`}</div>`; };
+  const card=b=>{ const isAccepted=b.status==='Accepted'; return `<div class="booking driver-job-card ${isAccepted?'accepted-job':''}">${isAccepted?'<div class="job-status-row"><span class="badge">ACCEPTED</span></div>':''}<div class="driver-job-route"><h3>${escapeHtml(b.pickup)} → ${escapeHtml(b.destination)}</h3></div><div class="driver-trip-schedule"><div class="driver-schedule-label">🗓 TRIP SCHEDULE</div><div class="driver-schedule-date">${escapeHtml(formatDate(b.date))}</div><div class="driver-schedule-time">${escapeHtml(formatTime(b.time))}</div></div><div class="driver-job-info"><div>👤 <b>${escapeHtml(String(b.passengers))}</b> passenger${Number(b.passengers)===1?'':'s'}</div><div>🧳 <b>${escapeHtml(String(b.luggage ?? 0))}</b> luggage</div><div>🚗 <b>${escapeHtml(b.vehicleType||'Not specified')}</b></div><div>🗣️ <b>${escapeHtml(b.language||'Any')}</b></div></div>${driverJobFeeHtml(b)}${locationLinks(b,true)}${flightDetails(b)}${isAccepted?`<div class="driver-customer-details">Customer: <b>${escapeHtml(b.name||'')}</b><br>Phone: <b>${escapeHtml(b.phone||'')}</b><br><small>Booking ID: ${escapeHtml(b.id)}</small></div>${renderTripStatus(b,true)}<div class="whatsapp-actions"><a class="whatsapp-button" href="${adminWhatsAppLink(b,'support')}" target="_blank" rel="noopener">💬 WhatsApp admin</a></div>`:`<div class="driver-match-reason">${escapeHtml(matchReasons(b).join(' • '))}</div><button class="accept" onclick="acceptJob('${escapeHtml(b.docId)}')">Accept job</button>`}</div>`; };
   const acceptedHtml=accepted.length?`<div class="driver-section-title"><h3>My accepted jobs</h3><span>${accepted.length} active job${accepted.length===1?'':'s'}</span></div>`+accepted.map(card).join(''):'<div class="driver-section-title"><h3>My accepted jobs</h3><span>No active jobs</span></div>';
   const availableHtml=available.length?`<div class="driver-section-title matched-title"><h3>Matched jobs available</h3><span>${available.length} job${available.length===1?'':'s'} to review</span></div>`+available.map(card).join(''):'<div class="driver-section-title matched-title"><h3>Matched jobs available</h3><span>No matching jobs right now</span></div>';
   $('#driverJobs').innerHTML=acceptedHtml+availableHtml;
@@ -443,7 +461,7 @@ function renderCustomerBookings(skipRefresh=false){
   const list=[...bookings].sort((a,b)=>String(b.date+b.time).localeCompare(String(a.date+a.time)));
   const bookingForm=$('#bookingForm'); if(bookingForm&&list.length) bookingForm.classList.add('hidden');
   if(!list.length){ $('#customerBookings').innerHTML='<p class="muted">No bookings yet.</p>'; return; }
-  $('#customerBookings').innerHTML='<div class="customer-bookings-header"><div><h3>Your bookings</h3><p class="muted">Your existing bookings are shown below.</p></div><button class="secondary" type="button" onclick="startNewBooking()">＋ New booking</button></div>'+list.map(b=>`<div class="booking"><h3>${escapeHtml(b.id)} <span class="badge">${escapeHtml(b.status)}</span></h3><p>${escapeHtml(b.pickup)} → ${escapeHtml(b.destination)}</p><div class="trip-schedule compact"><span>🗓 TRIP SCHEDULE</span><strong>${escapeHtml(formatDate(b.date))}</strong><b>${escapeHtml(formatTime(b.time))}</b></div>${locationLinks(b,false)}<div class="customer-party-summary"><div>👤 <b>${escapeHtml(String(b.adults ?? b.passengers ?? 0))}</b> adult${Number(b.adults ?? b.passengers ?? 0)===1?'':'s'}${Number(b.children ?? 0)>0?' • '+escapeHtml(String(b.children))+' children':''}</div><div>🧳 <b>${escapeHtml(String(b.luggage ?? 0))}</b> total bags • Checked: ${escapeHtml(String(b.checkedLuggage ?? b.luggage ?? 0))} • Hand carry: ${escapeHtml(String(b.handCarry ?? 0))}</div><div class="luggage-breakdown">Large: ${escapeHtml(String(b.largeLuggage ?? 0))} • Medium: ${escapeHtml(String(b.mediumLuggage ?? 0))} • Small: ${escapeHtml(String(b.smallLuggage ?? 0))}</div></div><p>${escapeHtml(b.language)} • Vehicle: <b>${escapeHtml(b.vehicleType||'Not specified')}</b></p>${b.flightNumber||b.flightType||b.terminal||b.meetInstructions?`<div class="flight-details"><b>✈️ FLIGHT DETAILS</b><br>${b.flightType?`Trip: ${escapeHtml(b.flightType)}<br>`:''}${b.flightNumber?`Flight: <b>${escapeHtml(b.flightNumber)}</b><br>`:''}${b.flightDate||b.flightTime?`Flight schedule: ${escapeHtml(formatDateTime(b.flightDate,b.flightTime))}<br>`:''}${b.terminal?`Terminal: ${escapeHtml(b.terminal)}<br>`:''}${b.meetInstructions?`Meet / pickup: ${escapeHtml(b.meetInstructions)}`:''}</div>`:''}${b.status==='Accepted'?renderTripStatus(b,false)+driverCard(b,publicProfileCache.get(b.driverUid))+`<div class="whatsapp-actions"><a class="whatsapp-button" href="${adminWhatsAppLink(b,'support')}" target="_blank" rel="noopener">💬 WhatsApp admin</a><a class="whatsapp-button secondary-whatsapp" href="${adminWhatsAppLink(b,'group')}" target="_blank" rel="noopener">👥 Prepare WhatsApp group</a></div>`:`<div class="booking-waiting"><small>Waiting for a matched driver</small><div class="whatsapp-actions"><a class="whatsapp-button" href="${adminWhatsAppLink(b,'support')}" target="_blank" rel="noopener">💬 Contact admin on WhatsApp</a></div></div>`}</div>`).join('');
+  $('#customerBookings').innerHTML='<div class="customer-bookings-header"><div><h3>Your bookings</h3><p class="muted">Your existing bookings are shown below.</p></div><button class="secondary" type="button" onclick="startNewBooking()">＋ New booking</button></div>'+list.map(b=>`<div class="booking"><h3>${escapeHtml(b.id)} <span class="badge">${escapeHtml(b.status)}</span></h3><p>${escapeHtml(b.pickup)} → ${escapeHtml(b.destination)}</p><div class="trip-schedule compact"><span>🗓 TRIP SCHEDULE</span><strong>${escapeHtml(formatDate(b.date))}</strong><b>${escapeHtml(formatTime(b.time))}</b></div>${locationLinks(b,false)}<div class="customer-party-summary"><div>👤 <b>${escapeHtml(String(b.adults ?? b.passengers ?? 0))}</b> adult${Number(b.adults ?? b.passengers ?? 0)===1?'':'s'}${Number(b.children ?? 0)>0?' • '+escapeHtml(String(b.children))+' children':''}</div><div>🧳 <b>${escapeHtml(String(b.luggage ?? 0))}</b> total bags • Checked: ${escapeHtml(String(b.checkedLuggage ?? b.luggage ?? 0))} • Hand carry: ${escapeHtml(String(b.handCarry ?? 0))}</div><div class="luggage-breakdown">Large: ${escapeHtml(String(b.largeLuggage ?? 0))} • Medium: ${escapeHtml(String(b.mediumLuggage ?? 0))} • Small: ${escapeHtml(String(b.smallLuggage ?? 0))}</div></div><p>${escapeHtml(b.language)} • Vehicle: <b>${escapeHtml(b.vehicleType||'Not specified')}</b></p>${adminJobFeeHtml(b)}${b.flightNumber||b.flightType||b.terminal||b.meetInstructions?`<div class="flight-details"><b>✈️ FLIGHT DETAILS</b><br>${b.flightType?`Trip: ${escapeHtml(b.flightType)}<br>`:''}${b.flightNumber?`Flight: <b>${escapeHtml(b.flightNumber)}</b><br>`:''}${b.flightDate||b.flightTime?`Flight schedule: ${escapeHtml(formatDateTime(b.flightDate,b.flightTime))}<br>`:''}${b.terminal?`Terminal: ${escapeHtml(b.terminal)}<br>`:''}${b.meetInstructions?`Meet / pickup: ${escapeHtml(b.meetInstructions)}`:''}</div>`:''}${b.status==='Accepted'?renderTripStatus(b,false)+driverCard(b,publicProfileCache.get(b.driverUid))+`<div class="whatsapp-actions"><a class="whatsapp-button" href="${adminWhatsAppLink(b,'support')}" target="_blank" rel="noopener">💬 WhatsApp admin</a><a class="whatsapp-button secondary-whatsapp" href="${adminWhatsAppLink(b,'group')}" target="_blank" rel="noopener">👥 Prepare WhatsApp group</a></div>`:`<div class="booking-waiting"><small>Waiting for a matched driver</small><div class="whatsapp-actions"><a class="whatsapp-button" href="${adminWhatsAppLink(b,'support')}" target="_blank" rel="noopener">💬 Contact admin on WhatsApp</a></div></div>`}</div>`).join('');
   if(!skipRefresh&&list.some(b=>b.driverUid)) refreshCustomerDriverProfiles();
 }
 window.startNewBooking=()=>{
@@ -465,6 +483,28 @@ function render(){
   const list=filter==='All'?bookings:bookings.filter(b=>b.status===filter);
   $('#adminBookings').innerHTML=list.length?list.map(b=>`<div class="booking"><h3>${escapeHtml(b.id)} <span class="badge">${escapeHtml(b.status)}</span></h3><p><b>${escapeHtml(b.pickup)}</b> → ${escapeHtml(b.destination)}</p>${locationLinks(b,false)}<div class="trip-schedule compact"><span>🗓 TRIP SCHEDULE</span><strong>${escapeHtml(formatDate(b.date))}</strong><b>${escapeHtml(formatTime(b.time))}</b></div><p>${escapeHtml(b.name)} • ${escapeHtml(b.phone)}</p><p>Vehicle: <b>${escapeHtml(b.vehicleType||'Not specified')}</b> • Language: ${escapeHtml(b.language||'Any')} • Luggage: <b>${escapeHtml(String(b.luggage ?? 0))}</b></p>${b.flightNumber||b.flightType||b.terminal||b.meetInstructions?`<div class="flight-details"><b>✈️ FLIGHT DETAILS</b><br>${b.flightType?`Trip: ${escapeHtml(b.flightType)}<br>`:''}${b.flightNumber?`Flight: <b>${escapeHtml(b.flightNumber)}</b><br>`:''}${b.flightDate||b.flightTime?`Flight schedule: ${escapeHtml(formatDateTime(b.flightDate,b.flightTime))}<br>`:''}${b.terminal?`Terminal: ${escapeHtml(b.terminal)}<br>`:''}${b.meetInstructions?`Meet / pickup: ${escapeHtml(b.meetInstructions)}`:''}</div>`:''}<div class="admin-trip-summary">${renderTripStatus(b,false)}</div><small>${b.driver?`Driver: ${escapeHtml(b.driver)} • ${escapeHtml(b.driverCarModel||'')} • ${escapeHtml(b.driverCarColor||'')} • Plate: ${escapeHtml(b.driverPlateNumber||'')} • WhatsApp: ${escapeHtml(b.driverWhatsApp||'Not provided')}`:'No driver yet'}</small><div class="whatsapp-actions"><a class="whatsapp-button" href="${adminWhatsAppLink(b,'support')}" target="_blank" rel="noopener">💬 Open admin WhatsApp</a>${b.status==='Accepted'?`<a class="whatsapp-button secondary-whatsapp" href="${adminWhatsAppLink(b,'group')}" target="_blank" rel="noopener">👥 Prepare WhatsApp group</a>`:''}</div>${b.status==='Accepted'&&currentRole==='admin'?`<button class="secondary complete" onclick="completeJob('${escapeHtml(b.docId)}')">Mark completed</button>`:''}</div>`).join(''):'<p class="muted">No bookings.</p>';
 }
+
+
+window.setJobFee=async id=>{
+  if(!firebaseReady||currentRole!=='admin') return alert('Admin access required.');
+  const booking=bookings.find(x=>x.docId===id||x.id===id);
+  if(!booking) return;
+  const existing=jobFees[id]?.fee;
+  const raw=prompt('Enter the driver job fee in RM for '+(booking.id||id), existing!=null?String(existing):'');
+  if(raw===null) return;
+  const fee=Number(String(raw).replace(/,/g,'').trim());
+  if(!Number.isFinite(fee)||fee<0||fee>100000) return alert('Please enter a valid fee from RM 0 to RM 100,000.');
+  try{
+    await window.FB.setDoc(window.FB.doc(db,'driverJobFees',id),{
+      bookingId:id,
+      bookingCode:booking.id||'',
+      fee:Number(fee.toFixed(2)),
+      updatedBy:currentUser.uid,
+      updatedAt:window.FB.serverTimestamp()
+    });
+    alert('Driver job fee saved: RM '+fee.toFixed(2));
+  }catch(e){ alert('Could not save job fee ('+(e.code||'error')+'): '+e.message); }
+};
 
 window.completeJob=async id=>{const booking=bookings.find(x=>x.docId===id||x.id===id);if(!booking||!firebaseReady||currentRole!=='admin')return;try{await window.FB.updateDoc(window.FB.doc(db,'bookings',booking.docId),{status:'Completed',tripStatus:'Completed',tripStatusUpdatedAt:window.FB.serverTimestamp(),completedAt:window.FB.serverTimestamp()});}catch(e){alert('Could not complete booking: '+e.message);}};
 $$('.filter').forEach(x=>x.onclick=()=>{$$('.filter').forEach(y=>y.classList.remove('active'));x.classList.add('active');filter=x.dataset.filter;render();});
