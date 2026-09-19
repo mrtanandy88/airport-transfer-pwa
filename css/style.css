@@ -73,3 +73,5 @@ main{width:100%;padding:16px}
   main{padding:10px}
   .bottom button{font-size:10px}
 }
+
+.driver-job-fee,.admin-job-fee{margin:12px 0;padding:12px 14px;border-radius:12px;background:#f1f5f9}.driver-job-fee{font-size:16px}.admin-job-fee{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.admin-job-fee button{margin-left:auto}
