@@ -15,6 +15,7 @@ let bookings = [], schedules = [], driverProfile = null, driverPublicProfile = n
 let currentUser = null, currentRole = null, db = null, auth = null, firebaseReady = false;
 let filter = 'All', stopCloudListeners = [], driverAvailable = [], driverAccepted = [];
 const publicProfileCache = new Map();
+const tripStatusInFlight = new Set();
 
 async function initFirebase() {
   if (!firebaseConfigured) {
@@ -313,13 +314,97 @@ function renderTripStatus(b,driverMode=false){
   return '<div class="trip-status"><div class="trip-status-header"><b>LIVE TRIP STATUS</b><span class="trip-status-current">'+TRIP_STATUS_ICONS[current]+' '+escapeHtml(TRIP_STATUS_LABELS[current])+'</span></div><div class="trip-status-timeline">'+timeline+'</div>'+actions+'</div>';
 }
 async function updateTripStatus(id,nextStatus){
-  const booking=bookings.find(x=>x.docId===id||x.id===id); if(!booking||!currentUser||currentRole!=='driver') return;
-  const current=TRIP_STATUSES.includes(booking.tripStatus)?booking.tripStatus:(booking.status==='Accepted'?'Accepted':'Accepted');
-  const expected={Accepted:'OnTheWay',OnTheWay:'ArrivedPickup',ArrivedPickup:'PickedUp',PickedUp:'ArrivedDestination',ArrivedDestination:'DroppedOff',DroppedOff:'Completed'}[current];
-  if(expected!==nextStatus) return alert('Please update the trip status in order.');
-  const timestampField={OnTheWay:'onTheWayAt',ArrivedPickup:'arrivedPickupAt',PickedUp:'pickedUpAt',ArrivedDestination:'arrivedDestinationAt',DroppedOff:'droppedOffAt',Completed:'completedAt'}[nextStatus];
-  const payload={tripStatus:nextStatus,tripStatusUpdatedAt:window.FB.serverTimestamp()}; if(timestampField) payload[timestampField]=window.FB.serverTimestamp(); if(nextStatus==='Completed') payload.status='Completed';
-  try{ await window.FB.updateDoc(window.FB.doc(db,'bookings',booking.docId),payload); }catch(e){ alert('Could not update trip status ('+(e.code||'error')+'): '+e.message); }
+  const booking=bookings.find(x=>x.docId===id||x.id===id);
+  if(!booking||!currentUser||currentRole!=='driver') return;
+
+  const key=booking.docId;
+  if(tripStatusInFlight.has(key)) return;
+  tripStatusInFlight.add(key);
+
+  const expectedMap={
+    Accepted:'OnTheWay',
+    OnTheWay:'ArrivedPickup',
+    ArrivedPickup:'PickedUp',
+    PickedUp:'ArrivedDestination',
+    ArrivedDestination:'DroppedOff',
+    DroppedOff:'Completed'
+  };
+
+  try{
+    const ref=window.FB.doc(db,'bookings',booking.docId);
+
+    // Read the latest Firestore document inside a transaction.
+    // This prevents a second/stale tap from producing a misleading
+    // permission-denied error after the first update already succeeded.
+    const changed=await window.FB.runTransaction(db,async transaction=>{
+      const snap=await transaction.get(ref);
+      if(!snap.exists()) throw new Error('Booking no longer exists.');
+
+      const latest=snap.data();
+      if(latest.driverUid!==currentUser.uid){
+        const err=new Error('This booking is assigned to another driver.');
+        err.code='booking-owner-mismatch';
+        throw err;
+      }
+
+      const current=TRIP_STATUSES.includes(latest.tripStatus)
+        ? latest.tripStatus
+        : (latest.status==='Completed'?'Completed':'Accepted');
+
+      const expected=expectedMap[current];
+
+      // Already updated by an earlier tap/request. Treat this as success.
+      if(current===nextStatus) return false;
+
+      if(expected!==nextStatus){
+        const err=new Error('The trip is already at '+(TRIP_STATUS_LABELS[current]||current)+'.');
+        err.code='trip-status-already-advanced';
+        throw err;
+      }
+
+      const timestampField={
+        OnTheWay:'onTheWayAt',
+        ArrivedPickup:'arrivedPickupAt',
+        PickedUp:'pickedUpAt',
+        ArrivedDestination:'arrivedDestinationAt',
+        DroppedOff:'droppedOffAt',
+        Completed:'completedAt'
+      }[nextStatus];
+
+      const payload={
+        tripStatus:nextStatus,
+        tripStatusUpdatedAt:window.FB.serverTimestamp()
+      };
+      if(timestampField) payload[timestampField]=window.FB.serverTimestamp();
+      if(nextStatus==='Completed') payload.status='Completed';
+
+      transaction.update(ref,payload);
+      return true;
+    });
+
+    if(changed){
+      // onSnapshot will refresh the card automatically.
+      renderJobs();
+    }else{
+      // The same transition was already completed; refresh the UI.
+      const snap=await window.FB.getDoc(ref);
+      if(snap.exists()){
+        const fresh={docId:snap.id,...snap.data()};
+        bookings=bookings.map(x=>x.docId===fresh.docId?fresh:x);
+        driverAccepted=driverAccepted.map(x=>x.docId===fresh.docId?fresh:x);
+        renderJobs();
+      }
+    }
+  }catch(e){
+    console.error('Trip status update failed:',e);
+    if(e.code==='trip-status-already-advanced'){
+      renderJobs();
+    }else{
+      alert('Could not update trip status ('+(e.code||'error')+'): '+e.message);
+    }
+  }finally{
+    tripStatusInFlight.delete(key);
+  }
 }
 window.updateTripStatus=updateTripStatus;
 async function addUnavailable() {
