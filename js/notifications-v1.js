@@ -20,6 +20,28 @@ const TRIP_ICONS = {
   Completed: '🎉'
 };
 
+
+const NOTIFICATION_STYLE = `
+.notification-center{position:fixed;right:14px;top:82px;z-index:9999;font-family:inherit;pointer-events:none}
+.notification-actions{display:flex;justify-content:flex-end}
+.notification-enable{pointer-events:auto;border:1px solid #cbd5e1;background:#fff;color:#111827;border-radius:999px;padding:9px 13px;font-weight:800;box-shadow:0 8px 24px rgba(15,23,42,.12);font-size:13px}
+.notification-enable.enabled{background:#dcfce7;color:#166534;border-color:#86efac}
+.notification-enable:disabled{opacity:.65}
+.notification-toast{pointer-events:auto;display:flex;gap:10px;align-items:flex-start;max-width:min(380px,calc(100vw - 28px));margin-top:10px;padding:13px 14px;border-radius:16px;background:#111827;color:#fff;box-shadow:0 14px 34px rgba(15,23,42,.25);font-size:14px;line-height:1.4}
+.notification-toast.trip{border-left:5px solid #22c55e}
+.notification-toast.success{background:#166534}
+.notification-toast.error{background:#991b1b}
+.notification-toast button{border:0;background:transparent;color:inherit;font-size:20px;line-height:1;padding:0;cursor:pointer;margin-left:auto}
+@media(max-width:640px){.notification-center{top:78px;right:10px}.notification-enable{font-size:12px;padding:8px 11px}.notification-toast{font-size:13px}}
+`;
+function injectNotificationStyle(){
+  if(document.getElementById('notificationStyle')) return;
+  const style=document.createElement('style');
+  style.id='notificationStyle';
+  style.textContent=NOTIFICATION_STYLE;
+  document.head.appendChild(style);
+}
+
 let auth = null;
 let db = null;
 let currentUser = null;
@@ -265,6 +287,7 @@ async function startFirebaseNotifications() {
   }
 }
 
+injectNotificationStyle();
 injectNotificationUI();
 updateNotificationButton();
 startFirebaseNotifications();
