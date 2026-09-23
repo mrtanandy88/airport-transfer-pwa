@@ -1,5 +1,5 @@
-const CACHE='airport-transfer-v45';
-const ASSETS=['./','./index.html','./manifest.json','./css/style.css','./js/app-v36.js','./js/language-picker.js','./js/customer-driver-card.js','./js/driver-auth-ui.js','./js/firebase-config.js','./js/notifications-v1.js'];
+const CACHE='airport-transfer-v46';
+const ASSETS=['./','./index.html','./manifest.json','./css/style.css','./js/app-v37.js','./js/language-picker.js','./js/customer-driver-card.js','./js/driver-auth-ui.js','./js/firebase-config.js','./js/notifications-v1.js'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',e=>e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request))));
