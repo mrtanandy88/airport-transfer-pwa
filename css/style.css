@@ -162,3 +162,20 @@ main{width:100%;padding:16px}
   .driver-avatar{width:62px;height:62px;min-width:62px}
   .driver-edit-toggle{min-width:68px!important;padding:9px 10px!important;font-size:13px}
 }
+
+
+/* V23 customer quote homepage */
+.quote-panel{margin:14px 0 18px;padding:20px;background:#fff;border:1px solid #dbe4ef;border-radius:18px;box-shadow:0 6px 20px rgba(15,23,42,.06)}
+.quote-panel h2{margin:5px 0 6px;font-size:24px}
+.quote-panel p{margin:0 0 14px;line-height:1.5}
+.quote-panel .whatsapp-button{width:100%;text-align:center;border:0;cursor:pointer;font:inherit}
+.quote-whatsapp{margin-top:4px;min-height:48px}
+.customer-quote{margin:12px 0;padding:14px 16px;border-radius:14px;display:grid;gap:3px}
+.customer-quote.pending{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412}
+.customer-quote.confirmed{background:#ecfdf5;border:2px solid #86efac;color:#166534}
+.customer-quote span{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.customer-quote strong{font-size:24px;color:#14532d}
+.customer-quote small{color:#64748b;line-height:1.45}
+.admin-customer-quote{margin:10px 0;padding:11px 13px;border-radius:12px;background:#eff6ff;border:1px solid #bfdbfe;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.admin-customer-quote button{margin-left:auto}
+@media(max-width:520px){.quote-panel{padding:15px}.quote-panel h2{font-size:21px}.admin-customer-quote button{width:100%;margin-left:0}}
