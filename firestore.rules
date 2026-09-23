@@ -157,6 +157,36 @@ service cloud.firestore {
       allow create, update, delete: if admin();
     }
 
+
+    // =========================================================
+    // CUSTOMER PRICE QUOTES
+    // =========================================================
+    //
+    // Customer price is stored separately from driver job fee.
+    // This is intentional: Firestore reads happen at document level,
+    // so customer-visible price and driver-only fee must not share
+    // the same document.
+    //
+    match /customerQuotes/{bookingId} {
+      // Customer can read only their own quote.
+      allow read: if signedIn()
+        && (
+          admin()
+          || (
+            role('customer')
+            && resource.data.customerUid == request.auth.uid
+          )
+        );
+
+      // Only admin can create/change/delete customer prices.
+      allow create, update, delete: if admin()
+        && request.resource.data.customerUid is string
+        && request.resource.data.bookingId == bookingId
+        && request.resource.data.price is number
+        && request.resource.data.price >= 0
+        && request.resource.data.price <= 100000;
+    }
+
     match /driverSchedules/{id} {
       allow create: if signedIn() && role('driver')
         && request.auth.uid == request.resource.data.driverUid;
