@@ -178,13 +178,16 @@ service cloud.firestore {
           )
         );
 
-      // Only admin can create/change/delete customer prices.
-      allow create, update, delete: if admin()
+      // Only admin can create/change customer prices.
+      allow create, update: if admin()
         && request.resource.data.customerUid is string
         && request.resource.data.bookingId == bookingId
         && request.resource.data.price is number
         && request.resource.data.price >= 0
         && request.resource.data.price <= 100000;
+
+      // Only admin can delete customer prices.
+      allow delete: if admin();
     }
 
     match /driverSchedules/{id} {
