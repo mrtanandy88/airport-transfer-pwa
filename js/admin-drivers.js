@@ -16,12 +16,13 @@ const ADMIN_DRIVER_MODULE_VERSION='1.1';
   try{ auth=F.getAuth(); }catch(e){ console.error('Admin driver module auth error',e); return; }
   const db=F.getFirestore();
 
+  const DUPLICATE_DRIVER_EMAIL='ridzuannn11@gmail.com';
   const state={drivers:[],profiles:new Map(),schedules:[],bookings:[],role:null};
 
   const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   const host=()=>document.querySelector('#adminDrivers');
-  const search=()=>String(document.querySelector('#adminDriverSearch')?.value||'').trim().toLowerCase();
-  const clearSearch=()=>{const input=document.querySelector('#adminDriverSearch');if(input)input.value='';render();input?.focus();};
+  const searchInput=()=>document.querySelector('#adminDriverSearch');
+  const search=()=>String(searchInput()?.value||'').trim().toLowerCase();
 
   function formatDate(v){
     if(!v)return '';
@@ -39,6 +40,46 @@ const ADMIN_DRIVER_MODULE_VERSION='1.1';
     if(!rows.length)return '<p class="muted">No private unavailable schedule.</p>';
     return rows.map(s=>'<div class="admin-driver-schedule"><b>'+esc(formatDate(s.date))+'</b><span>'+esc(s.from||'')+' – '+esc(s.to||'')+'</span></div>').join('');
   }
+
+  function runSearch(){
+    render();
+    searchInput()?.focus();
+  }
+
+  function clearSearch(){
+    const input=searchInput();
+    if(input)input.value='';
+    render();
+    input?.focus();
+  }
+
+  async function removeDuplicateDriverData(uid,email){
+    if(state.role!=='admin' || !uid || String(email||'').toLowerCase()!==DUPLICATE_DRIVER_EMAIL)return;
+    const ok=confirm(
+      'REMOVE DUPLICATE DRIVER DATA?\n\n'+
+      'Account: '+email+'\n\n'+
+      'This will remove the duplicate driver from the PWA database, including their driver profile and private schedules. Existing booking history will NOT be deleted.\n\n'+
+      'After this, you must still delete the Firebase Authentication user in Firebase Console.\n\nContinue?'
+    );
+    if(!ok)return;
+
+    try{
+      const schedules=state.schedules.filter(s=>s.driverUid===uid);
+      await Promise.all([
+        F.deleteDoc(F.doc(db,'users',uid)),
+        F.deleteDoc(F.doc(db,'driverPublicProfiles',uid)),
+        ...schedules.map(s=>F.deleteDoc(F.doc(db,'driverSchedules',s.docId)))
+      ]);
+      alert(
+        'Duplicate driver data removed from the PWA database.\n\n'+
+        'Next: Firebase Console → Authentication → Users → delete '+email+' there as well.'
+      );
+    }catch(e){
+      console.error('Duplicate driver cleanup error',e);
+      alert('Could not remove the duplicate driver data: '+(e.message||e));
+    }
+  }
+  window.removeDuplicateDriverData=removeDuplicateDriverData;
 
   function render(){
     const el=host();
@@ -78,6 +119,7 @@ const ADMIN_DRIVER_MODULE_VERSION='1.1';
     const active=state.bookings.filter(b=>b.driverUid===d.docId && b.status==='Accepted');
     const completed=state.bookings.filter(b=>b.driverUid===d.docId && b.status==='Completed');
     const status=active.length?'On Job':'Registered';
+    const isDuplicate=String(d.email||'').toLowerCase()===DUPLICATE_DRIVER_EMAIL;
 
     const jobs=active.length
       ?active.map(b=>'<div class="admin-driver-job"><b>'+esc(b.id||b.docId)+'</b> • '+esc(b.date||'')+' '+esc(b.time||'')+'<br>'+esc(b.pickup||'')+' → '+esc(b.destination||'')+'</div>').join('')
@@ -114,8 +156,9 @@ const ADMIN_DRIVER_MODULE_VERSION='1.1';
       '<div class="admin-driver-actions">'+
         (wa?'<a class="whatsapp-button" href="'+whatsapp(wa,name)+'" target="_blank" rel="noopener">💬 WhatsApp driver</a>':'')+
         (d.email?'<a class="map-link" href="mailto:'+encodeURIComponent(d.email)+'">✉️ Email</a>':'')+
-        '<button type="button" class="danger admin-driver-remove" data-remove-driver="'+esc(d.docId)+'">🗑️ Remove duplicate data</button>'+
+        (isDuplicate?'<button class="danger admin-delete-duplicate" type="button" data-driver-uid="'+esc(d.docId)+'" data-driver-email="'+esc(d.email)+'">🗑 Remove duplicate driver data</button>':'')+
       '</div>'+
+      (isDuplicate?'<small class="admin-duplicate-warning">Duplicate identified by email: '+esc(DUPLICATE_DRIVER_EMAIL)+'. Existing booking history is preserved. Firebase Authentication must be deleted separately in Firebase Console.</small>':'')+
     '</article>';
   }
 
@@ -153,45 +196,19 @@ const ADMIN_DRIVER_MODULE_VERSION='1.1';
     }catch(e){console.error('Admin driver role check',e);}
   });
 
-  document.addEventListener('click',async e=>{
-    if(e.target?.id==='adminDriverSearchButton'){render();return;}
-    if(e.target?.id==='adminDriverSearchClear'){clearSearch();return;}
-    const btn=e.target?.closest('[data-remove-driver]');
-    if(!btn)return;
-    const uid=btn.getAttribute('data-remove-driver');
-    const driver=state.drivers.find(d=>d.docId===uid);
-    if(!driver)return;
-    const email=driver.email||'';
-    const typed=window.prompt('Type this duplicate driver email to confirm Firestore cleanup:\n\n'+email);
-    if(typed===null)return;
-    if(String(typed).trim().toLowerCase()!==email.trim().toLowerCase()){
-      window.alert('Email does not match. No data was deleted.');
-      return;
-    }
-    await removeDriverFirestoreData(uid);
+  document.addEventListener('input',e=>{
+    if(e.target?.id==='adminDriverSearch')render();
   });
-  document.addEventListener('input',e=>{if(e.target?.id==='adminDriverSearch')render();});
 
-  async function removeDriverFirestoreData(uid){
-    if(state.role!=='admin')return;
-    const driver=state.drivers.find(d=>d.docId===uid);
-    const email=driver?.email||uid;
-    const active=state.bookings.some(b=>b.driverUid===uid && ['Accepted','OnTheWay','ArrivedPickup','PickedUp','ArrivedDestination','DroppedOff'].includes(b.tripStatus||b.status));
-    if(active){
-      window.alert('This driver has an active trip. Finish or reassign the trip before removing the driver data.');
-      return;
+  document.addEventListener('click',e=>{
+    const searchBtn=e.target.closest?.('#adminDriverSearchButton');
+    const clearBtn=e.target.closest?.('#adminDriverSearchClear');
+    const deleteBtn=e.target.closest?.('.admin-delete-duplicate');
+    if(searchBtn){e.preventDefault();runSearch();return;}
+    if(clearBtn){e.preventDefault();clearSearch();return;}
+    if(deleteBtn){
+      e.preventDefault();
+      removeDuplicateDriverData(deleteBtn.dataset.driverUid,deleteBtn.dataset.driverEmail);
     }
-    try{
-      const batch=F.writeBatch(db);
-      batch.delete(F.doc(db,'users',uid));
-      batch.delete(F.doc(db,'driverPublicProfiles',uid));
-      const schedules=await F.getDocs(F.query(F.collection(db,'driverSchedules'),F.where('driverUid','==',uid)));
-      schedules.forEach(d=>batch.delete(d.ref));
-      await batch.commit();
-      window.alert('Firestore driver records removed for '+email+'. The Firebase Authentication login still exists. Delete the Authentication user separately in Firebase Console → Authentication → Users.');
-    }catch(err){
-      console.error('Remove driver data',err);
-      window.alert('Could not remove driver data: '+(err?.message||err));
-    }
-  }
+  });
 })();
