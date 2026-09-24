@@ -89,7 +89,7 @@ const ADMIN_DRIVER_MODULE_VERSION='1.1';
     const rows=state.drivers.filter(d=>{
       const p=state.profiles.get(d.docId)||{};
       const hay=[
-        d.displayName,d.email,d.vehicleType,d.carModel,d.carColor,d.plateNumber,d.whatsappNumber,
+        d.displayName,d.email,d.vehicleType,d.carModel,d.carColor,d.plateNumber,d.whatsappNumber,d.preferredLocation,
         p.displayName,p.vehicleType,p.carModel,p.carColor,p.plateNumber,p.whatsappNumber,
         ...(d.languages||[]),...(p.languages||[])
       ].join(' ').toLowerCase();
@@ -113,6 +113,7 @@ const ADMIN_DRIVER_MODULE_VERSION='1.1';
     const color=p.carColor||d.carColor||'Not provided';
     const plate=p.plateNumber||d.plateNumber||'Not provided';
     const wa=p.whatsappNumber||d.whatsappNumber||'';
+    const preferredLocation=p.preferredLocation||d.preferredLocation||'';
     const languages=p.languages||d.languages||[];
     const selfie=p.selfieDataUrl||'';
     const car=p.carPhotoDataUrl||'';
@@ -142,6 +143,7 @@ const ADMIN_DRIVER_MODULE_VERSION='1.1';
         '<div><small>EMAIL</small><b>'+esc(d.email||'Not provided')+'</b></div>'+
         '<div><small>WHATSAPP</small><b>'+esc(wa||'Not provided')+'</b></div>'+
         '<div><small>LANGUAGES</small><b>'+esc(languages.join(', ')||'None')+'</b></div>'+
+        '<div><small>PREFERRED PICKUP AREA</small><b>'+esc(preferredLocation||'Not provided')+'</b></div>'+
         '<div><small>COMPLETED</small><b>'+completed.length+'</b></div>'+
       '</div>'+
       '<details class="admin-driver-details">'+
@@ -149,6 +151,7 @@ const ADMIN_DRIVER_MODULE_VERSION='1.1';
         '<div class="admin-driver-detail-section"><h4>🚗 Vehicle</h4><p>Type: <b>'+esc(vehicle)+'</b><br>Model: <b>'+esc(model)+'</b><br>Colour: <b>'+esc(color)+'</b><br>Plate: <b>'+esc(plate)+'</b></p></div>'+
         '<div class="admin-driver-detail-section"><h4>📱 Contact</h4><p>Email: <b>'+esc(d.email||'Not provided')+'</b><br>WhatsApp: <b>'+esc(wa||'Not provided')+'</b></p></div>'+
         '<div class="admin-driver-detail-section"><h4>🗣️ Languages</h4><p>'+esc(languages.join(', ')||'None provided')+'</p></div>'+
+        '<div class="admin-driver-detail-section"><h4>📍 Preferred pickup area</h4><p>'+esc(preferredLocation||'Not provided')+'</p><small class="muted">Use this area to recommend nearby pickup jobs to the driver.</small></div>'+
         '<div class="admin-driver-detail-section"><h4>📅 Private unavailable schedule</h4>'+scheduleHtml(d.docId)+'</div>'+
         '<div class="admin-driver-detail-section"><h4>🧳 Current / active jobs</h4>'+jobs+'</div>'+
         '<div class="admin-driver-detail-section"><h4>🆔 Account</h4><p>Driver UID: <code>'+esc(d.docId)+'</code></p></div>'+
