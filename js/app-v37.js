@@ -116,6 +116,7 @@ function loadDriverProfileUI() {
   $('#driverCarColorProfile').value = p.carColor || '';
   $('#driverPlateProfile').value = p.plateNumber || '';
   $('#driverWhatsAppProfile').value = p.whatsappNumber || '';
+  $('#driverPreferredLocationProfile').value = p.preferredLocation || '';
   setSelected($('#driverLanguagesProfile'), p.languages || driverProfile?.languages || []);
   renderDriverPhotoPreview(p);
   const summaryName=$('#driverProfileNameSummary');
@@ -155,14 +156,14 @@ async function signUp(role, email, password) {
   email = (email || '').trim(); if (!email || !password) return alert('Enter email and password.'); if (password.length < 6) return alert('Password must be at least 6 characters.');
   try {
     if (role !== 'driver') { const result = await window.FB.createUserWithEmailAndPassword(auth, email, password); await window.FB.setDoc(window.FB.doc(db, 'users', result.user.uid), { email, role, createdAt: window.FB.serverTimestamp() }); alert('Customer account created.'); return; }
-    const displayName = $('#driverName').value.trim(), vehicleType = $('#driverVehicle').value, carModel = $('#driverCarModel').value.trim(), carColor = $('#driverCarColor').value.trim(), plateNumber = normalizePlate($('#driverPlate').value), whatsappNumber = normalizeWhatsAppNumber($('#driverWhatsApp').value);
+    const displayName = $('#driverName').value.trim(), vehicleType = $('#driverVehicle').value, carModel = $('#driverCarModel').value.trim(), carColor = $('#driverCarColor').value.trim(), plateNumber = normalizePlate($('#driverPlate').value), whatsappNumber = normalizeWhatsAppNumber($('#driverWhatsApp').value), preferredLocation = $('#driverPreferredLocation').value.trim();
     const selfieFile = $('#driverSelfie').files[0], carFile = $('#driverCarPhoto').files[0];
-    if (!displayName) return alert('Please enter your driver name.'); if (!VEHICLES.includes(vehicleType)) return alert('Please select your vehicle.'); if (!validCarModel(carModel)) return alert('Please enter your car model.'); if (!validCarColor(carColor)) return alert('Please enter your car color.'); if (!validPlate(plateNumber)) return alert('Please enter your car plate number.'); if (!whatsappNumber) return alert('Please enter your WhatsApp number in international format, e.g. 60123456789.'); if (!selfieFile || !carFile) return alert('Please upload both your selfie and car photo.');
+    if (!displayName) return alert('Please enter your driver name.'); if (preferredLocation.length > 100) return alert('Preferred pickup area must be 100 characters or fewer.'); if (!VEHICLES.includes(vehicleType)) return alert('Please select your vehicle.'); if (!validCarModel(carModel)) return alert('Please enter your car model.'); if (!validCarColor(carColor)) return alert('Please enter your car color.'); if (!validPlate(plateNumber)) return alert('Please enter your car plate number.'); if (!whatsappNumber) return alert('Please enter your WhatsApp number in international format, e.g. 60123456789.'); if (!selfieFile || !carFile) return alert('Please upload both your selfie and car photo.');
     const [selfieDataUrl, carPhotoDataUrl] = await Promise.all([compressImage(selfieFile, 700, 220000), compressImage(carFile, 1000, 220000)]);
     const result = await window.FB.createUserWithEmailAndPassword(auth, email, password);
     const languages = selectedLanguages();
-    await window.FB.setDoc(window.FB.doc(db, 'users', result.user.uid), { email, role, displayName, vehicleType, carModel, carColor, plateNumber, whatsappNumber, languages, createdAt: window.FB.serverTimestamp() });
-    await window.FB.setDoc(window.FB.doc(db, 'driverPublicProfiles', result.user.uid), { driverUid: result.user.uid, displayName, vehicleType, carModel, carColor, plateNumber, whatsappNumber, languages, selfieDataUrl, carPhotoDataUrl, updatedAt: window.FB.serverTimestamp() });
+    await window.FB.setDoc(window.FB.doc(db, 'users', result.user.uid), { email, role, displayName, vehicleType, carModel, carColor, plateNumber, whatsappNumber, preferredLocation, languages, createdAt: window.FB.serverTimestamp() });
+    await window.FB.setDoc(window.FB.doc(db, 'driverPublicProfiles', result.user.uid), { driverUid: result.user.uid, displayName, vehicleType, carModel, carColor, plateNumber, whatsappNumber, preferredLocation, languages, selfieDataUrl, carPhotoDataUrl, updatedAt: window.FB.serverTimestamp() });
     alert('Driver account created. Your profile is ready for customer verification.');
   } catch (e) { console.error(e); alert(e.message); }
 }
@@ -173,8 +174,8 @@ async function signIn(expectedRole, email, password) {
 }
 async function saveDriverProfile() {
   if (!currentUser || currentRole !== 'driver') return alert('Please sign in as a driver first.');
-  const displayName = $('#driverNameProfile').value.trim(), vehicleType = $('#driverVehicleProfile').value, carModel = $('#driverCarModelProfile').value.trim(), carColor = $('#driverCarColorProfile').value.trim(), plateNumber = normalizePlate($('#driverPlateProfile').value), whatsappNumber = normalizeWhatsAppNumber($('#driverWhatsAppProfile').value);
-  if (!displayName) return alert('Please enter your driver name.'); if (!VEHICLES.includes(vehicleType)) return alert('Please select your vehicle.'); if (!validCarModel(carModel)) return alert('Please enter your car model.'); if (!validCarColor(carColor)) return alert('Please enter your car color.'); if (!validPlate(plateNumber)) return alert('Please enter your car plate number.'); if (!whatsappNumber) return alert('Please enter your WhatsApp number in international format, e.g. 60123456789.');
+  const displayName = $('#driverNameProfile').value.trim(), vehicleType = $('#driverVehicleProfile').value, carModel = $('#driverCarModelProfile').value.trim(), carColor = $('#driverCarColorProfile').value.trim(), plateNumber = normalizePlate($('#driverPlateProfile').value), whatsappNumber = normalizeWhatsAppNumber($('#driverWhatsAppProfile').value), preferredLocation = $('#driverPreferredLocationProfile').value.trim();
+  if (!displayName) return alert('Please enter your driver name.'); if (preferredLocation.length > 100) return alert('Preferred pickup area must be 100 characters or fewer.'); if (!VEHICLES.includes(vehicleType)) return alert('Please select your vehicle.'); if (!validCarModel(carModel)) return alert('Please enter your car model.'); if (!validCarColor(carColor)) return alert('Please enter your car color.'); if (!validPlate(plateNumber)) return alert('Please enter your car plate number.'); if (!whatsappNumber) return alert('Please enter your WhatsApp number in international format, e.g. 60123456789.');
   const button = $('#saveDriverProfile'); button.disabled = true; button.textContent = 'Saving...'; $('#driverProfileMessage').textContent = '';
   try {
     let selfieDataUrl = driverPublicProfile?.selfieDataUrl || '', carPhotoDataUrl = driverPublicProfile?.carPhotoDataUrl || '';
@@ -184,18 +185,18 @@ async function saveDriverProfile() {
     if (!selfieDataUrl || !carPhotoDataUrl) return alert('Please upload both your selfie and car photo before saving your profile.');
     const languages = selectedProfileLanguages();
     try {
-      await window.FB.setDoc(window.FB.doc(db, 'users', currentUser.uid), { displayName, vehicleType, carModel, carColor, plateNumber, whatsappNumber, languages }, { merge: true });
+      await window.FB.setDoc(window.FB.doc(db, 'users', currentUser.uid), { displayName, vehicleType, carModel, carColor, plateNumber, whatsappNumber, preferredLocation, languages }, { merge: true });
     } catch (e) {
       console.error('Driver users profile save failed:', e);
       throw new Error('users profile save failed (' + (e.code || 'error') + '): ' + e.message);
     }
     try {
-      await window.FB.setDoc(window.FB.doc(db, 'driverPublicProfiles', currentUser.uid), { driverUid: currentUser.uid, displayName, vehicleType, carModel, carColor, plateNumber, whatsappNumber, languages, selfieDataUrl, carPhotoDataUrl, updatedAt: window.FB.serverTimestamp() }, { merge: true });
+      await window.FB.setDoc(window.FB.doc(db, 'driverPublicProfiles', currentUser.uid), { driverUid: currentUser.uid, displayName, vehicleType, carModel, carColor, plateNumber, whatsappNumber, preferredLocation, languages, selfieDataUrl, carPhotoDataUrl, updatedAt: window.FB.serverTimestamp() }, { merge: true });
     } catch (e) {
       console.error('Driver public profile save failed:', e);
       throw new Error('driverPublicProfiles save failed (' + (e.code || 'error') + '): ' + e.message);
     }
-    driverProfile = { ...(driverProfile || {}), displayName, vehicleType, carModel, carColor, plateNumber, whatsappNumber, languages }; driverPublicProfile = { ...(driverPublicProfile || {}), displayName, vehicleType, carModel, carColor, plateNumber, whatsappNumber, languages, selfieDataUrl, carPhotoDataUrl };
+    driverProfile = { ...(driverProfile || {}), displayName, vehicleType, carModel, carColor, plateNumber, whatsappNumber, preferredLocation, languages }; driverPublicProfile = { ...(driverPublicProfile || {}), displayName, vehicleType, carModel, carColor, plateNumber, whatsappNumber, preferredLocation, languages, selfieDataUrl, carPhotoDataUrl };
     $('#driverSelfieProfile').value = ''; $('#driverCarPhotoProfile').value = ''; renderDriverPhotoPreview(driverPublicProfile); renderJobs();
     $('#driverProfileMessage').textContent = '✓ Driver profile saved. Customers will see your name, vehicle, model, color, plate and photos after assignment.';
   } catch (e) { $('#driverProfileMessage').textContent = '✕ Save failed: ' + (e.code || 'error') + ' — ' + e.message; }
