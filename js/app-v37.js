@@ -12,7 +12,6 @@ const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 
 let bookings = [], schedules = [], driverProfile = null, driverPublicProfile = null, customerQuotes = [];
-let adminDrivers = [], adminDriverProfiles = [], adminDriverSchedules = [];
 let currentUser = null, currentRole = null, db = null, auth = null, firebaseReady = false;
 let jobFees = {};
 let filter = 'All', stopCloudListeners = [], driverAvailable = [], driverAccepted = [];
@@ -34,7 +33,7 @@ async function initFirebase() {
     $('#modeNotice').textContent = 'Firebase connected. Matching checks vehicle, language, private schedule and booking time.';
     am.onAuthStateChanged(auth, async user => {
       stopListeners(); currentUser = user; currentRole = null; driverProfile = null; driverPublicProfile = null;
-      bookings = []; schedules = []; driverAvailable = []; driverAccepted = []; jobFees = {}; customerQuotes = []; adminDrivers = []; adminDriverProfiles = []; adminDriverSchedules = [];
+      bookings = []; schedules = []; driverAvailable = []; driverAccepted = []; jobFees = {}; customerQuotes = [];
       if (user) {
         try {
           const snap = await fs.getDoc(fs.doc(db, 'users', user.uid));
@@ -83,9 +82,6 @@ function startCloudListeners() {
     stopCloudListeners.push(F.onSnapshot(F.collection(db, 'bookings'), snap => { bookings = mergeDocs(snap); render(); }, handleCloudError));
     stopCloudListeners.push(F.onSnapshot(F.collection(db, 'driverJobFees'), snap => { jobFees = Object.fromEntries(snap.docs.map(d => [d.id, d.data()])); render(); }, handleCloudError));
     stopCloudListeners.push(F.onSnapshot(F.collection(db, 'customerQuotes'), snap => { customerQuotes = Object.fromEntries(snap.docs.map(d => [d.id, d.data()])); render(); }, handleCloudError));
-    stopCloudListeners.push(F.onSnapshot(F.collection(db, 'users'), snap => { adminDrivers = mergeDocs(snap).filter(u => u.role === 'driver'); renderAdminDrivers(); }, handleCloudError));
-    stopCloudListeners.push(F.onSnapshot(F.collection(db, 'driverPublicProfiles'), snap => { adminDriverProfiles = mergeDocs(snap); renderAdminDrivers(); }, handleCloudError));
-    stopCloudListeners.push(F.onSnapshot(F.collection(db, 'driverSchedules'), snap => { adminDriverSchedules = mergeDocs(snap); renderAdminDrivers(); }, handleCloudError));
   }
 }
 function rebuildDriverBookings(available, accepted) {
@@ -572,70 +568,8 @@ function updatePassengerLuggagePreview(){
   if(lp) lp.textContent=`Luggage: ${checked} checked (${large} large • ${medium} medium • ${small} small) • ${hand} hand carry • Total ${total}`;
   if(totalInput) totalInput.value=total;
 }
-function renderAdminDrivers(){
-  if(currentRole!=='admin') return;
-  const host=$('#adminDrivers');
-  if(!host) return;
-  const query=String($('#adminDriverSearch')?.value||'').trim().toLowerCase();
-  const profiles=new Map(adminDriverProfiles.map(p=>[p.docId,p]));
-  const scheduleMap=new Map();
-  adminDriverSchedules.forEach(s=>{ if(!scheduleMap.has(s.driverUid)) scheduleMap.set(s.driverUid,[]); scheduleMap.get(s.driverUid).push(s); });
-  const driverRows=adminDrivers.filter(d=>{
-    const p=profiles.get(d.docId)||{};
-    const hay=[d.displayName,d.email,d.plateNumber,d.whatsappNumber,d.vehicleType,d.carModel,d.carColor,...(d.languages||[]),p.displayName,p.plateNumber,p.whatsappNumber].join(' ').toLowerCase();
-    return !query || hay.includes(query);
-  }).sort((a,b)=>String(a.displayName||a.email||'').localeCompare(String(b.displayName||b.email||'')));
-  const total=adminDrivers.length;
-  const onJob=adminDrivers.filter(d=>bookings.some(b=>b.driverUid===d.docId && b.status==='Accepted')).length;
-  const available=Math.max(0,total-onJob);
-  const statHtml='<div class="driver-admin-stats"><div><b>'+total+'</b><small>Registered</small></div><div><b>'+available+'</b><small>Not on job</small></div><div><b>'+onJob+'</b><small>On job</small></div></div>';
-  if(!driverRows.length){ host.innerHTML=statHtml+'<div class="driver-admin-empty">No registered drivers match your search.</div>'; return; }
-  const cards=driverRows.map(d=>{
-    const p=profiles.get(d.docId)||{};
-    const name=p.displayName||d.displayName||'Unnamed driver';
-    const vehicle=p.vehicleType||d.vehicleType||'Not set';
-    const model=p.carModel||d.carModel||'Not provided';
-    const color=p.carColor||d.carColor||'Not provided';
-    const plate=p.plateNumber||d.plateNumber||'Not provided';
-    const wa=p.whatsappNumber||d.whatsappNumber||'Not provided';
-    const languages=p.languages||d.languages||[];
-    const schedulesForDriver=scheduleMap.get(d.docId)||[];
-    const activeJobs=bookings.filter(b=>b.driverUid===d.docId && b.status==='Accepted');
-    const completedJobs=bookings.filter(b=>b.driverUid===d.docId && b.status==='Completed');
-    const photo=p.selfieDataUrl||'';
-    const carPhoto=p.carPhotoDataUrl||'';
-    const status=activeJobs.length?'On Job':'Registered';
-    const scheduleHtml=schedulesForDriver.length
-      ? schedulesForDriver.sort((a,b)=>String(a.date+a.from).localeCompare(String(b.date+b.from))).map(s=>'<div class="admin-driver-schedule"><b>'+escapeHtml(formatDate(s.date))+'</b><span>'+escapeHtml(s.from||'')+' – '+escapeHtml(s.to||'')+'</span></div>').join('')
-      : '<small class="muted">No private unavailable schedule.</small>';
-    const activeHtml=activeJobs.length
-      ? activeJobs.map(b=>'<div class="admin-driver-job"><b>'+escapeHtml(b.id||b.docId)+'</b> • '+escapeHtml(formatDateTime(b.date,b.time))+'<br>'+escapeHtml(b.pickup||'')+' → '+escapeHtml(b.destination||'')+'</div>').join('')
-      : '<small class="muted">No active job.</small>';
-    return '<article class="admin-driver-card">'+
-      '<div class="admin-driver-head">'+
-        '<div class="admin-driver-avatar">'+(photo?'<img src="'+photo+'" alt="Driver photo">':'👤')+'</div>'+
-        '<div class="admin-driver-main"><div class="admin-driver-title"><h3>'+escapeHtml(name)+'</h3><span class="admin-driver-status '+(activeJobs.length?'onjob':'registered')+'">'+status+'</span></div><p>'+escapeHtml(vehicle)+' • '+escapeHtml(model)+' • '+escapeHtml(color)+'</p><span class="admin-driver-plate">'+escapeHtml(plate)+'</span></div>'+
-      '</div>'+
-      '<div class="admin-driver-photos">'+(photo?'<div><img src="'+photo+'" alt="Driver selfie"><small>Driver</small></div>':'')+(carPhoto?'<div><img src="'+carPhoto+'" alt="Car photo"><small>Vehicle</small></div>':'')+'</div>'+
-      '<div class="admin-driver-grid">'+
-        '<div><small>EMAIL</small><b>'+escapeHtml(d.email||'Not provided')+'</b></div>'+
-        '<div><small>WHATSAPP</small><b>'+escapeHtml(wa)+'</b></div>'+
-        '<div><small>LANGUAGES</small><b>'+escapeHtml(languages.join(', ')||'None')+'</b></div>'+
-        '<div><small>COMPLETED</small><b>'+completedJobs.length+'</b></div>'+
-      '</div>'+
-      '<details class="admin-driver-details"><summary>View full driver details</summary>'+
-        '<div class="admin-driver-detail-section"><h4>🚗 Vehicle</h4><p>Type: <b>'+escapeHtml(vehicle)+'</b><br>Model: <b>'+escapeHtml(model)+'</b><br>Colour: <b>'+escapeHtml(color)+'</b><br>Plate: <b>'+escapeHtml(plate)+'</b></p></div>'+
-        '<div class="admin-driver-detail-section"><h4>📱 Contact</h4><p>Email: <b>'+escapeHtml(d.email||'Not provided')+'</b><br>WhatsApp: <b>'+escapeHtml(wa)+'</b></p></div>'+
-        '<div class="admin-driver-detail-section"><h4>🗣️ Languages</h4><p>'+escapeHtml(languages.join(', ')||'None provided')+'</p></div>'+
-        '<div class="admin-driver-detail-section"><h4>📅 Private unavailable schedule</h4>'+scheduleHtml+'</div>'+
-        '<div class="admin-driver-detail-section"><h4>🧳 Current / active jobs</h4>'+activeHtml+'</div>'+
-        '<div class="admin-driver-detail-section"><h4>🆔 Account</h4><p>Driver UID: <code>'+escapeHtml(d.docId)+'</code><br>Registered: '+escapeHtml(d.createdAt?.toDate?formatDateTime(d.createdAt.toDate().toISOString().slice(0,10),d.createdAt.toDate().toTimeString().slice(0,5)):'Available in Firebase')+'</p></div>'+\n      '</details>'+\n      '<div class="admin-driver-actions">'+(wa!=='Not provided'?'<a class="whatsapp-button" href="'+whatsappUrl(wa,'Hello '+name+', this is Airport Transfer admin.')+'" target="_blank" rel="noopener">💬 WhatsApp driver</a>':'')+'<a class="map-link" href="mailto:'+encodeURIComponent(d.email||'')+'">✉️ Email</a></div>'+\n    '</article>';
-  }).join('');
-  host.innerHTML=statHtml+cards;
-}
 function render(){
   renderSchedules(); renderJobs(); renderCustomerBookings();
-  renderAdminDrivers();
   const total=bookings.length,availableCount=bookings.filter(b=>b.status==='Available').length,accepted=bookings.filter(b=>b.status==='Accepted').length,completed=bookings.filter(b=>b.status==='Completed').length;
   $('#adminStats').innerHTML=`<div class="stat"><b>${total}</b><small>Total</small></div><div class="stat"><b>${availableCount}</b><small>Available</small></div><div class="stat"><b>${accepted}</b><small>Accepted</small></div><div class="stat"><b>${completed}</b><small>Completed</small></div>`;
   const list=filter==='All'?bookings:bookings.filter(b=>b.status===filter);
@@ -687,8 +621,7 @@ window.setCustomerQuote=async id=>{
 };
 
 window.completeJob=async id=>{const booking=bookings.find(x=>x.docId===id||x.id===id);if(!booking||!firebaseReady||currentRole!=='admin')return;try{await window.FB.updateDoc(window.FB.doc(db,'bookings',booking.docId),{status:'Completed',tripStatus:'Completed',tripStatusUpdatedAt:window.FB.serverTimestamp(),completedAt:window.FB.serverTimestamp()});}catch(e){alert('Could not complete booking: '+e.message);}};
-$('.filter').forEach(x=>x.onclick=()=>{$('.filter').forEach(y=>y.classList.remove('active'));x.classList.add('active');filter=x.dataset.filter;render();});
-$('#adminDriverSearch')?.addEventListener('input',renderAdminDrivers);
+$$('.filter').forEach(x=>x.onclick=()=>{$$('.filter').forEach(y=>y.classList.remove('active'));x.classList.add('active');filter=x.dataset.filter;render();});
 $('#clearAll').onclick=()=>alert('Cloud data is protected.');
 function escapeHtml(value){return String(value??'').replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));}
 async function reverseGeocodeCurrentLocation(lat,lng){
