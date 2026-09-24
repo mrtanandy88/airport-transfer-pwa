@@ -223,3 +223,8 @@ main{width:100%;padding:16px}
 .driver-admin-empty{padding:18px;border:1px dashed #cbd5e1;border-radius:14px;text-align:center;color:#64748b;background:#f8fafc}
 .admin-driver-management-head{display:flex;justify-content:space-between;gap:12px}
 @media(max-width:520px){.driver-admin-stats{grid-template-columns:1fr 1fr 1fr}.admin-driver-grid{grid-template-columns:1fr}.admin-driver-title{align-items:flex-start;flex-direction:column}.admin-driver-status{align-self:flex-start}.admin-driver-actions{display:grid;grid-template-columns:1fr}.admin-driver-photos{grid-template-columns:1fr 1fr}}
+
+.admin-driver-search{display:grid;grid-template-columns:1fr auto auto;gap:8px;margin-top:14px;align-items:center}
+.admin-driver-search input{min-width:0}
+.admin-driver-remove{margin-left:auto}
+@media(max-width:560px){.admin-driver-search{grid-template-columns:1fr 1fr}.admin-driver-search input{grid-column:1/-1}.admin-driver-remove{margin-left:0;width:100%}}
