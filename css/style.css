@@ -179,3 +179,47 @@ main{width:100%;padding:16px}
 .admin-customer-quote{margin:10px 0;padding:11px 13px;border-radius:12px;background:#eff6ff;border:1px solid #bfdbfe;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .admin-customer-quote button{margin-left:auto}
 @media(max-width:520px){.quote-panel{padding:15px}.quote-panel h2{font-size:21px}.admin-customer-quote button{width:100%;margin-left:0}}
+
+
+/* V24 Admin driver management */
+.admin-driver-management{margin:18px 0 12px;padding:18px;background:#fff;border:1px solid #dbe4ef;border-radius:18px;box-shadow:0 6px 20px rgba(15,23,42,.05)}
+.admin-driver-management h3{margin:4px 0 5px;font-size:22px}
+.admin-driver-management p{margin:0 0 12px;line-height:1.45}
+.admin-driver-management input{margin-top:10px}
+.driver-admin-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0 14px}
+.driver-admin-stats>div{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:11px}
+.driver-admin-stats b{display:block;font-size:21px}
+.driver-admin-stats small{font-size:11px;font-weight:700}
+.admin-driver-card{background:#fff;border:1px solid #dbe4ef;border-radius:18px;padding:16px;margin:12px 0;box-shadow:0 5px 18px rgba(15,23,42,.05)}
+.admin-driver-head{display:flex;gap:13px;align-items:flex-start}
+.admin-driver-avatar{width:68px;height:68px;min-width:68px;border-radius:50%;background:#e2e8f0;display:grid;place-items:center;overflow:hidden;font-size:28px;border:3px solid #dbeafe}
+.admin-driver-avatar img{width:100%;height:100%;object-fit:cover}
+.admin-driver-main{min-width:0;flex:1}
+.admin-driver-title{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.admin-driver-title h3{margin:0;font-size:19px;overflow-wrap:anywhere}
+.admin-driver-main p{margin:4px 0 7px;color:#475569;line-height:1.4}
+.admin-driver-status{font-size:11px;font-weight:800;padding:5px 8px;border-radius:999px;white-space:nowrap}
+.admin-driver-status.registered{background:#e0f2fe;color:#075985}
+.admin-driver-status.onjob{background:#dcfce7;color:#166534}
+.admin-driver-plate{display:inline-block;padding:5px 9px;border:2px solid #111827;border-radius:7px;font-weight:900;letter-spacing:.08em;background:#fff}
+.admin-driver-photos{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:13px 0}
+.admin-driver-photos>div{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:7px}
+.admin-driver-photos img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px}
+.admin-driver-photos small{display:block;margin-top:5px;font-weight:700}
+.admin-driver-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.admin-driver-grid>div{padding:9px 10px;background:#f8fafc;border-radius:10px;min-width:0}
+.admin-driver-grid small{display:block;font-size:9px;font-weight:900;letter-spacing:.08em;color:#64748b}
+.admin-driver-grid b{display:block;margin-top:3px;font-size:13px;overflow-wrap:anywhere}
+.admin-driver-details{margin-top:12px;border-top:1px solid #e2e8f0;padding-top:11px}
+.admin-driver-details summary{cursor:pointer;font-weight:800;color:#2563eb;padding:4px 0}
+.admin-driver-detail-section{padding:12px 0;border-bottom:1px solid #edf2f7}
+.admin-driver-detail-section:last-child{border-bottom:0}
+.admin-driver-detail-section h4{margin:0 0 7px;font-size:14px}
+.admin-driver-detail-section p{margin:0;line-height:1.65}
+.admin-driver-schedule,.admin-driver-job{padding:9px 10px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;margin:6px 0;line-height:1.45}
+.admin-driver-schedule{display:flex;justify-content:space-between;gap:10px}
+.admin-driver-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.admin-driver-actions>*{flex:1;text-align:center}
+.driver-admin-empty{padding:18px;border:1px dashed #cbd5e1;border-radius:14px;text-align:center;color:#64748b;background:#f8fafc}
+.admin-driver-management-head{display:flex;justify-content:space-between;gap:12px}
+@media(max-width:520px){.driver-admin-stats{grid-template-columns:1fr 1fr 1fr}.admin-driver-grid{grid-template-columns:1fr}.admin-driver-title{align-items:flex-start;flex-direction:column}.admin-driver-status{align-self:flex-start}.admin-driver-actions{display:grid;grid-template-columns:1fr}.admin-driver-photos{grid-template-columns:1fr 1fr}}
