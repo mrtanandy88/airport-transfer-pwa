@@ -241,7 +241,7 @@ const ADMIN_DRIVER_MODULE_VERSION='1.1';
 
     return '<article class="admin-driver-card">'+
       '<div class="admin-driver-head">'+
-        '<div class="admin-driver-avatar zoomable-driver-photo" role="button" tabindex="0" aria-label="Open driver photo">'+(selfie?'<img src="'+selfie+'" alt="Driver photo">':'👤')+'</div>'+
+        '<div class="admin-driver-avatar">'+(selfie?'<img class="zoomable-driver-photo" role="button" tabindex="0" src="'+selfie+'" alt="Driver photo">':'👤')+'</div>'+
         '<div class="admin-driver-main">'+
           '<div class="admin-driver-title"><h3>'+esc(name)+'</h3><span class="admin-driver-status '+(active.length?'onjob':'registered')+'">'+status+'</span></div>'+
           '<p>'+esc(vehicle)+' • '+esc(model)+' • '+esc(color)+'</p>'+
