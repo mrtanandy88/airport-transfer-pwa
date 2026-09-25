@@ -218,7 +218,7 @@ const ADMIN_DRIVER_MODULE_VERSION='1.1';
         '<div><small>EMAIL</small><b>'+esc(d.email||'Not provided')+'</b></div>'+
         '<div><small>WHATSAPP</small><b>'+esc(wa||'Not provided')+'</b></div>'+
         '<div><small>LANGUAGES</small><b>'+esc(languages.join(', ')||'None')+'</b></div>'+
-        '<div><small>PREFERRED PICKUP AREA</small><b>'+esc(preferredLocation||'Not provided')+'</b></div>'+
+        '<div class="preferred-location-cell">'+(preferredLocation?'<button class="preferred-location-button" type="button" data-driver-uid="'+esc(d.docId)+'"><small>PREFERRED PICKUP AREA</small><b>📍 '+esc(preferredLocation)+'</b><span>Tap to find nearby jobs</span></button>':'<small>PREFERRED PICKUP AREA</small><b>Not provided</b>')+'</div>'+
         '<div><small>COMPLETED</small><b>'+completed.length+'</b></div>'+
       '</div>'+
       '<details class="admin-driver-details">'+
@@ -284,7 +284,18 @@ const ADMIN_DRIVER_MODULE_VERSION='1.1';
     const searchBtn=e.target.closest?.('#adminDriverSearchButton');
     const clearBtn=e.target.closest?.('#adminDriverSearchClear');
     const deleteBtn=e.target.closest?.('.admin-delete-duplicate');
+    const preferredBtn=e.target.closest?.('.preferred-location-button');
     const recommendBtn=e.target.closest?.('.recommend-area-button');
+    if(preferredBtn){
+      e.preventDefault();
+      const driver=state.drivers.find(d=>d.docId===preferredBtn.dataset.driverUid);
+      const p=driver?state.profiles.get(driver.docId)||{}:{};
+      const loc=p.preferredLocation||driver?.preferredLocation||'';
+      const wrap=document.querySelector('#recommendations-'+preferredBtn.dataset.driverUid);
+      if(wrap)wrap.innerHTML=recommendationHtml(driver,loc);
+      wrap?.scrollIntoView({behavior:'smooth',block:'start'});
+      return;
+    }
     if(recommendBtn){
       e.preventDefault();
       const driver=state.drivers.find(d=>d.docId===recommendBtn.dataset.driverUid);
