@@ -142,7 +142,7 @@ function validCarModel(v) { return String(v || '').trim().length >= 2 && String(
 function validCarColor(v) { return String(v || '').trim().length >= 2 && String(v || '').trim().length <= 30; }
 function validCoordinate(v) { return Number.isFinite(Number(v)) && Number(v) >= -180 && Number(v) <= 180; }
 async function useDriverPreferredLocation(prefix) {
-  const areaInput=$('#'+prefix+'Location'), latInput=$('#'+prefix+'LocationLat'), lngInput=$('#'+prefix+'LocationLng'), status=$('#'+prefix+'LocationStatus');
+  const areaInput=$('#'+prefix), latInput=$('#'+prefix+'Lat'), lngInput=$('#'+prefix+'Lng'), status=$('#'+prefix+'Status');
   if(!areaInput||!latInput||!lngInput)return;
   if(!window.isSecureContext){if(status)status.textContent='Location requires HTTPS. Please open the GitHub Pages link in Chrome.';return;}
   if(!navigator.geolocation){if(status)status.textContent='This browser does not provide location services.';return;}
@@ -223,7 +223,7 @@ async function logout() { if (firebaseReady && auth) await window.FB.signOut(aut
 $('#customerSignup').onclick = () => signUp('customer', $('#customerEmail').value, $('#customerPassword').value);
 $('#customerLogin').onclick = () => signIn('customer', $('#customerEmail').value, $('#customerPassword').value);
 $('#driverSignup').onclick = () => signUp('driver', $('#driverEmail').value, $('#driverPassword').value);
-$('#driverPreferredLocationButton')?.addEventListener('click',()=>useDriverPreferredLocation('driverPreferred')); $('#driverPreferredLocationProfileButton')?.addEventListener('click',()=>useDriverPreferredLocation('driverPreferredLocationProfile')); $('#driverPreferredLocation')?.addEventListener('input',()=>clearDriverPreferredGps('driverPreferred')); $('#driverPreferredLocationProfile')?.addEventListener('input',()=>clearDriverPreferredGps('driverPreferredLocationProfile'));
+$('#driverPreferredLocationButton')?.addEventListener('click',()=>useDriverPreferredLocation('driverPreferredLocation')); $('#driverPreferredLocationProfileButton')?.addEventListener('click',()=>useDriverPreferredLocation('driverPreferredLocationProfile')); $('#driverPreferredLocation')?.addEventListener('input',()=>clearDriverPreferredGps('driverPreferred')); $('#driverPreferredLocationProfile')?.addEventListener('input',()=>clearDriverPreferredGps('driverPreferredLocationProfile'));
 $('#driverLogin').onclick = () => signIn('driver', $('#driverEmail').value, $('#driverPassword').value);
 $('#adminLogin').onclick = () => signIn('admin', $('#adminEmail').value, $('#adminPassword').value);
 $('#customerLogout').onclick = logout; $('#driverLogout').onclick = logout; $('#saveDriverProfile').onclick = saveDriverProfile;
