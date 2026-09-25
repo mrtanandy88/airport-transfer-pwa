@@ -116,7 +116,7 @@ function loadDriverProfileUI() {
   $('#driverCarColorProfile').value = p.carColor || '';
   $('#driverPlateProfile').value = p.plateNumber || '';
   $('#driverWhatsAppProfile').value = p.whatsappNumber || '';
-  $('#driverPreferredLocationProfile').value = p.preferredLocation || '';
+  if ($('#driverPreferredLocationProfile')) $('#driverPreferredLocationProfile').value = p.preferredLocation || '';
   setSelected($('#driverLanguagesProfile'), p.languages || driverProfile?.languages || []);
   renderDriverPhotoPreview(p);
   const summaryName=$('#driverProfileNameSummary');
