@@ -43,8 +43,8 @@ async function enhanceCustomerCards(bookings) {
     driverCard.innerHTML = `
       <h4 class="driver-card-title">Driver assigned</h4>
       <div class="photo-grid">
-        <div><img src="${escapeHtml(profile.selfieDataUrl || '')}" alt="Assigned driver"><small>Driver photo</small></div>
-        <div><img src="${escapeHtml(profile.carPhotoDataUrl || '')}" alt="Assigned vehicle"><small>Car photo</small></div>
+        <div><img class="zoomable-driver-photo" role="button" tabindex="0" src="${escapeHtml(profile.selfieDataUrl || '')}" alt="Assigned driver"><small>Driver photo</small></div>
+        <div><img class="zoomable-driver-photo" role="button" tabindex="0" src="${escapeHtml(profile.carPhotoDataUrl || '')}" alt="Assigned vehicle"><small>Car photo</small></div>
       </div>
       <div class="driver-identification">
         <div class="driver-person">
