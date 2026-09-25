@@ -117,7 +117,7 @@ const ADMIN_DRIVER_MODULE_VERSION='1.1';
       rows.map(b=>'<div class="driver-recommendation-card">'+
         '<div><b>'+esc(b.id||b.docId||'Booking')+'</b><p>'+esc(b.pickup||'')+' → '+esc(b.destination||'')+'</p><small>'+esc(b.date||'')+' '+esc(b.time||'')+' • '+esc(b.vehicleType||'')+' • '+esc(b.language||'Any language')+'</small></div>'+
         '<div class="driver-recommendation-reasons">'+esc(b._reasons.join(' • '))+'</div>'+
-        '<a class="primary recommend-driver-button" href="'+whatsapp(p.driverWhatsApp||dWhatsApp(driver)||'',driver.displayName||'')+'" target="_blank" rel="noopener">💬 Recommend</a>'+
+        '<a class="primary recommend-driver-button" href="'+(dWhatsApp(driver)?whatsapp(dWhatsApp(driver),recommendBookingMessage(driver,b)):'#')+'" target="_blank" rel="noopener">💬 Recommend to driver</a>'+
       '</div>').join('')+
     '</div>';
   }
