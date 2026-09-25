@@ -20,6 +20,7 @@ service cloud.firestore {
     function validPhoto(v) { return v is string && v.size() > 100 && v.size() < 300000; }
     function validWhatsApp(v) { return v is string && v.size() >= 8 && v.size() <= 20; }
     function validPreferredLocation(v) { return v is string && v.size() <= 100; }
+    function validCoordinate(v) { return v is number && v >= -180 && v <= 180; }
     function validTripStatus(v) {
       return v in ['AwaitingDriver','Accepted','OnTheWay','ArrivedPickup','PickedUp','ArrivedDestination','DroppedOff','Completed'];
     }
@@ -34,7 +35,9 @@ service cloud.firestore {
             && validCarColor(request.resource.data.carColor)
             && validPlate(request.resource.data.plateNumber)
             && validWhatsApp(request.resource.data.whatsappNumber)
-            && validPreferredLocation(request.resource.data.preferredLocation)));
+            && validPreferredLocation(request.resource.data.preferredLocation)
+            && (!('preferredLocationLat' in request.resource.data) || request.resource.data.preferredLocationLat == null || validCoordinate(request.resource.data.preferredLocationLat))
+            && (!('preferredLocationLng' in request.resource.data) || request.resource.data.preferredLocationLng == null || validCoordinate(request.resource.data.preferredLocationLng))));
 
       allow read: if signedIn() && (request.auth.uid == uid || admin());
 
@@ -48,7 +51,7 @@ service cloud.firestore {
           && validPlate(request.resource.data.plateNumber)
           && validWhatsApp(request.resource.data.whatsappNumber)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'displayName','vehicleType','carModel','carColor','languages','plateNumber','whatsappNumber','preferredLocation'
+            'displayName','vehicleType','carModel','carColor','languages','plateNumber','whatsappNumber','preferredLocation','preferredLocationLat','preferredLocationLng'
           ]));
 
       allow delete: if admin();
@@ -74,11 +77,13 @@ service cloud.firestore {
           && validPlate(request.resource.data.plateNumber)
           && validWhatsApp(request.resource.data.whatsappNumber)
           && validPreferredLocation(request.resource.data.preferredLocation)
+          && (!('preferredLocationLat' in request.resource.data) || request.resource.data.preferredLocationLat == null || validCoordinate(request.resource.data.preferredLocationLat))
+          && (!('preferredLocationLng' in request.resource.data) || request.resource.data.preferredLocationLng == null || validCoordinate(request.resource.data.preferredLocationLng))
           && validPhoto(request.resource.data.selfieDataUrl)
           && validPhoto(request.resource.data.carPhotoDataUrl)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'displayName','vehicleType','carModel','carColor','plateNumber','whatsappNumber',
-            'languages','preferredLocation','selfieDataUrl','carPhotoDataUrl','updatedAt'
+            'languages','preferredLocation','preferredLocationLat','preferredLocationLng','selfieDataUrl','carPhotoDataUrl','updatedAt'
           ]));
 
       allow delete: if admin();
