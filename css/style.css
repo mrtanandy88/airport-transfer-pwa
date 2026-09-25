@@ -228,3 +228,22 @@ main{width:100%;padding:16px}
 .admin-driver-search input{min-width:0}
 .admin-driver-remove{margin-left:auto}
 @media(max-width:560px){.admin-driver-search{grid-template-columns:1fr 1fr}.admin-driver-search input{grid-column:1/-1}.admin-driver-remove{margin-left:0;width:100%}}
+
+/* V25 preferred-area job recommendations */
+.preferred-location-cell{padding:0!important;background:#f8fafc!important}
+.preferred-location-button{width:100%;border:0;background:transparent;text-align:left;padding:9px 10px;border-radius:10px;cursor:pointer;font:inherit;color:#111827}
+.preferred-location-button:hover{background:#eef6ff}
+.preferred-location-button small,.preferred-location-button b,.preferred-location-button span{display:block}
+.preferred-location-button small{font-size:9px;font-weight:900;letter-spacing:.08em;color:#64748b}
+.preferred-location-button b{margin-top:3px;font-size:13px;overflow-wrap:anywhere}
+.preferred-location-button span{margin-top:4px;font-size:11px;font-weight:700;color:#2563eb}
+.driver-recommendations-wrap{margin-top:12px}
+.driver-recommendations{padding:12px;border:1px solid #bfdbfe;border-radius:14px;background:#eff6ff}
+.driver-recommendations-head{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px}
+.driver-recommendations-head span{font-size:11px;color:#475569;font-weight:700}
+.driver-recommendation-card{background:#fff;border:1px solid #dbe4ef;border-radius:12px;padding:11px;margin:8px 0}
+.driver-recommendation-card p{margin:4px 0;font-weight:700;color:#334155}
+.driver-recommendation-card small{display:block;color:#64748b;line-height:1.4}
+.driver-recommendation-reasons{margin:8px 0;font-size:11px;font-weight:700;color:#166534}
+.recommend-driver-button{display:block;text-align:center;text-decoration:none;margin-top:8px}
+.driver-recommendations-empty{padding:12px;border:1px dashed #93c5fd;border-radius:12px;background:#f8fafc;color:#475569;font-size:13px}
