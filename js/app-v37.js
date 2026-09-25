@@ -117,6 +117,8 @@ function loadDriverProfileUI() {
   $('#driverPlateProfile').value = p.plateNumber || '';
   $('#driverWhatsAppProfile').value = p.whatsappNumber || '';
   if ($('#driverPreferredLocationProfile')) $('#driverPreferredLocationProfile').value = p.preferredLocation || '';
+  if ($('#driverPreferredLocationProfileLat')) $('#driverPreferredLocationProfileLat').value = p.preferredLocationLat ?? '';
+  if ($('#driverPreferredLocationProfileLng')) $('#driverPreferredLocationProfileLng').value = p.preferredLocationLng ?? '';
   setSelected($('#driverLanguagesProfile'), p.languages || driverProfile?.languages || []);
   renderDriverPhotoPreview(p);
   const summaryName=$('#driverProfileNameSummary');
@@ -138,6 +140,21 @@ function normalizePlate(v) { return String(v || '').trim().toUpperCase(); }
 function validPlate(v) { return normalizePlate(v).length >= 2; }
 function validCarModel(v) { return String(v || '').trim().length >= 2 && String(v || '').trim().length <= 60; }
 function validCarColor(v) { return String(v || '').trim().length >= 2 && String(v || '').trim().length <= 30; }
+function validCoordinate(v) { return Number.isFinite(Number(v)) && Number(v) >= -180 && Number(v) <= 180; }
+async function useDriverPreferredLocation(prefix) {
+  const areaInput=$('#'+prefix+'Location'), latInput=$('#'+prefix+'LocationLat'), lngInput=$('#'+prefix+'LocationLng'), status=$('#'+prefix+'LocationStatus');
+  if(!areaInput||!latInput||!lngInput)return;
+  if(!window.isSecureContext){if(status)status.textContent='Location requires HTTPS. Please open the GitHub Pages link in Chrome.';return;}
+  if(!navigator.geolocation){if(status)status.textContent='This browser does not provide location services.';return;}
+  if(status)status.textContent='📍 Getting GPS location…';
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    const lat=pos.coords.latitude,lng=pos.coords.longitude;
+    latInput.value=lat.toFixed(6); lngInput.value=lng.toFixed(6);
+    try{const address=await reverseGeocodeCurrentLocation(lat,lng); if(address)areaInput.value=address; if(status)status.textContent='✓ GPS saved. You can edit the preferred area name above.';}
+    catch(e){console.warn('Driver preferred area reverse geocoding failed',e); if(status)status.textContent='✓ GPS saved. You can edit the preferred area name above.';}
+  },err=>{if(status)status.textContent=locationErrorMessage(err);},{enableHighAccuracy:true,timeout:20000,maximumAge:0});
+}
+function clearDriverPreferredGps(prefix){const lat=$('#'+prefix+'LocationLat'),lng=$('#'+prefix+'LocationLng');if(lat)lat.value='';if(lng)lng.value='';}
 async function compressImage(file, maxDimension = 1000, maxBytes = 220000) {
   if (!file || !file.type.startsWith('image/')) throw new Error('Please choose an image file.');
   const bitmap = await createImageBitmap(file);
@@ -156,14 +173,14 @@ async function signUp(role, email, password) {
   email = (email || '').trim(); if (!email || !password) return alert('Enter email and password.'); if (password.length < 6) return alert('Password must be at least 6 characters.');
   try {
     if (role !== 'driver') { const result = await window.FB.createUserWithEmailAndPassword(auth, email, password); await window.FB.setDoc(window.FB.doc(db, 'users', result.user.uid), { email, role, createdAt: window.FB.serverTimestamp() }); alert('Customer account created.'); return; }
-    const displayName = $('#driverName').value.trim(), vehicleType = $('#driverVehicle').value, carModel = $('#driverCarModel').value.trim(), carColor = $('#driverCarColor').value.trim(), plateNumber = normalizePlate($('#driverPlate').value), whatsappNumber = normalizeWhatsAppNumber($('#driverWhatsApp').value), preferredLocation = $('#driverPreferredLocation').value.trim();
+    const displayName = $('#driverName').value.trim(), vehicleType = $('#driverVehicle').value, carModel = $('#driverCarModel').value.trim(), carColor = $('#driverCarColor').value.trim(), plateNumber = normalizePlate($('#driverPlate').value), whatsappNumber = normalizeWhatsAppNumber($('#driverWhatsApp').value), preferredLocation = $('#driverPreferredLocation').value.trim(), preferredLocationLat = $('#driverPreferredLocationLat').value ? Number($('#driverPreferredLocationLat').value) : null, preferredLocationLng = $('#driverPreferredLocationLng').value ? Number($('#driverPreferredLocationLng').value) : null;
     const selfieFile = $('#driverSelfie').files[0], carFile = $('#driverCarPhoto').files[0];
     if (!displayName) return alert('Please enter your driver name.'); if (preferredLocation.length > 100) return alert('Preferred pickup area must be 100 characters or fewer.'); if (!VEHICLES.includes(vehicleType)) return alert('Please select your vehicle.'); if (!validCarModel(carModel)) return alert('Please enter your car model.'); if (!validCarColor(carColor)) return alert('Please enter your car color.'); if (!validPlate(plateNumber)) return alert('Please enter your car plate number.'); if (!whatsappNumber) return alert('Please enter your WhatsApp number in international format, e.g. 60123456789.'); if (!selfieFile || !carFile) return alert('Please upload both your selfie and car photo.');
     const [selfieDataUrl, carPhotoDataUrl] = await Promise.all([compressImage(selfieFile, 700, 220000), compressImage(carFile, 1000, 220000)]);
     const result = await window.FB.createUserWithEmailAndPassword(auth, email, password);
     const languages = selectedLanguages();
-    await window.FB.setDoc(window.FB.doc(db, 'users', result.user.uid), { email, role, displayName, vehicleType, carModel, carColor, plateNumber, whatsappNumber, preferredLocation, languages, createdAt: window.FB.serverTimestamp() });
-    await window.FB.setDoc(window.FB.doc(db, 'driverPublicProfiles', result.user.uid), { driverUid: result.user.uid, displayName, vehicleType, carModel, carColor, plateNumber, whatsappNumber, preferredLocation, languages, selfieDataUrl, carPhotoDataUrl, updatedAt: window.FB.serverTimestamp() });
+    await window.FB.setDoc(window.FB.doc(db, 'users', result.user.uid), { email, role, displayName, vehicleType, carModel, carColor, plateNumber, whatsappNumber, preferredLocation, preferredLocationLat, preferredLocationLng, languages, createdAt: window.FB.serverTimestamp() });
+    await window.FB.setDoc(window.FB.doc(db, 'driverPublicProfiles', result.user.uid), { driverUid: result.user.uid, displayName, vehicleType, carModel, carColor, plateNumber, whatsappNumber, preferredLocation, preferredLocationLat, preferredLocationLng, languages, selfieDataUrl, carPhotoDataUrl, updatedAt: window.FB.serverTimestamp() });
     alert('Driver account created. Your profile is ready for customer verification.');
   } catch (e) { console.error(e); alert(e.message); }
 }
@@ -174,7 +191,7 @@ async function signIn(expectedRole, email, password) {
 }
 async function saveDriverProfile() {
   if (!currentUser || currentRole !== 'driver') return alert('Please sign in as a driver first.');
-  const displayName = $('#driverNameProfile').value.trim(), vehicleType = $('#driverVehicleProfile').value, carModel = $('#driverCarModelProfile').value.trim(), carColor = $('#driverCarColorProfile').value.trim(), plateNumber = normalizePlate($('#driverPlateProfile').value), whatsappNumber = normalizeWhatsAppNumber($('#driverWhatsAppProfile').value), preferredLocation = $('#driverPreferredLocationProfile').value.trim();
+  const displayName = $('#driverNameProfile').value.trim(), vehicleType = $('#driverVehicleProfile').value, carModel = $('#driverCarModelProfile').value.trim(), carColor = $('#driverCarColorProfile').value.trim(), plateNumber = normalizePlate($('#driverPlateProfile').value), whatsappNumber = normalizeWhatsAppNumber($('#driverWhatsAppProfile').value), preferredLocation = $('#driverPreferredLocationProfile').value.trim(), preferredLocationLat = $('#driverPreferredLocationProfileLat').value ? Number($('#driverPreferredLocationProfileLat').value) : null, preferredLocationLng = $('#driverPreferredLocationProfileLng').value ? Number($('#driverPreferredLocationProfileLng').value) : null;
   if (!displayName) return alert('Please enter your driver name.'); if (preferredLocation.length > 100) return alert('Preferred pickup area must be 100 characters or fewer.'); if (!VEHICLES.includes(vehicleType)) return alert('Please select your vehicle.'); if (!validCarModel(carModel)) return alert('Please enter your car model.'); if (!validCarColor(carColor)) return alert('Please enter your car color.'); if (!validPlate(plateNumber)) return alert('Please enter your car plate number.'); if (!whatsappNumber) return alert('Please enter your WhatsApp number in international format, e.g. 60123456789.');
   const button = $('#saveDriverProfile'); button.disabled = true; button.textContent = 'Saving...'; $('#driverProfileMessage').textContent = '';
   try {
@@ -185,18 +202,18 @@ async function saveDriverProfile() {
     if (!selfieDataUrl || !carPhotoDataUrl) return alert('Please upload both your selfie and car photo before saving your profile.');
     const languages = selectedProfileLanguages();
     try {
-      await window.FB.setDoc(window.FB.doc(db, 'users', currentUser.uid), { displayName, vehicleType, carModel, carColor, plateNumber, whatsappNumber, preferredLocation, languages }, { merge: true });
+      await window.FB.setDoc(window.FB.doc(db, 'users', currentUser.uid), { displayName, vehicleType, carModel, carColor, plateNumber, whatsappNumber, preferredLocation, preferredLocationLat, preferredLocationLng, languages }, { merge: true });
     } catch (e) {
       console.error('Driver users profile save failed:', e);
       throw new Error('users profile save failed (' + (e.code || 'error') + '): ' + e.message);
     }
     try {
-      await window.FB.setDoc(window.FB.doc(db, 'driverPublicProfiles', currentUser.uid), { driverUid: currentUser.uid, displayName, vehicleType, carModel, carColor, plateNumber, whatsappNumber, preferredLocation, languages, selfieDataUrl, carPhotoDataUrl, updatedAt: window.FB.serverTimestamp() }, { merge: true });
+      await window.FB.setDoc(window.FB.doc(db, 'driverPublicProfiles', currentUser.uid), { driverUid: currentUser.uid, displayName, vehicleType, carModel, carColor, plateNumber, whatsappNumber, preferredLocation, preferredLocationLat, preferredLocationLng, languages, selfieDataUrl, carPhotoDataUrl, updatedAt: window.FB.serverTimestamp() }, { merge: true });
     } catch (e) {
       console.error('Driver public profile save failed:', e);
       throw new Error('driverPublicProfiles save failed (' + (e.code || 'error') + '): ' + e.message);
     }
-    driverProfile = { ...(driverProfile || {}), displayName, vehicleType, carModel, carColor, plateNumber, whatsappNumber, preferredLocation, languages }; driverPublicProfile = { ...(driverPublicProfile || {}), displayName, vehicleType, carModel, carColor, plateNumber, whatsappNumber, preferredLocation, languages, selfieDataUrl, carPhotoDataUrl };
+    driverProfile = { ...(driverProfile || {}), displayName, vehicleType, carModel, carColor, plateNumber, whatsappNumber, preferredLocation, preferredLocationLat, preferredLocationLng, languages }; driverPublicProfile = { ...(driverPublicProfile || {}), displayName, vehicleType, carModel, carColor, plateNumber, whatsappNumber, preferredLocation, preferredLocationLat, preferredLocationLng, languages, selfieDataUrl, carPhotoDataUrl };
     $('#driverSelfieProfile').value = ''; $('#driverCarPhotoProfile').value = ''; renderDriverPhotoPreview(driverPublicProfile); renderJobs();
     $('#driverProfileMessage').textContent = '✓ Driver profile saved. Customers will see your name, vehicle, model, color, plate and photos after assignment.';
   } catch (e) { $('#driverProfileMessage').textContent = '✕ Save failed: ' + (e.code || 'error') + ' — ' + e.message; }
@@ -206,6 +223,7 @@ async function logout() { if (firebaseReady && auth) await window.FB.signOut(aut
 $('#customerSignup').onclick = () => signUp('customer', $('#customerEmail').value, $('#customerPassword').value);
 $('#customerLogin').onclick = () => signIn('customer', $('#customerEmail').value, $('#customerPassword').value);
 $('#driverSignup').onclick = () => signUp('driver', $('#driverEmail').value, $('#driverPassword').value);
+$('#driverPreferredLocationButton')?.addEventListener('click',()=>useDriverPreferredLocation('driverPreferred')); $('#driverPreferredLocationProfileButton')?.addEventListener('click',()=>useDriverPreferredLocation('driverPreferredLocationProfile')); $('#driverPreferredLocation')?.addEventListener('input',()=>clearDriverPreferredGps('driverPreferred')); $('#driverPreferredLocationProfile')?.addEventListener('input',()=>clearDriverPreferredGps('driverPreferredLocationProfile'));
 $('#driverLogin').onclick = () => signIn('driver', $('#driverEmail').value, $('#driverPassword').value);
 $('#adminLogin').onclick = () => signIn('admin', $('#adminEmail').value, $('#adminPassword').value);
 $('#customerLogout').onclick = logout; $('#driverLogout').onclick = logout; $('#saveDriverProfile').onclick = saveDriverProfile;
