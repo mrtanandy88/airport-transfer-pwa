@@ -53,6 +53,80 @@ const ADMIN_DRIVER_MODULE_VERSION='1.1';
     input?.focus();
   }
 
+  function normalizeArea(v){
+    return String(v||'').toLowerCase()
+      .replace(/[^a-z0-9\\s]/g,' ')
+      .replace(/\\b(kuala lumpur|wilayah persekutuan)\\b/g,'kl')
+      .replace(/\\b(pj)\\b/g,'petaling jaya')
+      .replace(/\\s+/g,' ').trim();
+  }
+
+  function areaTokens(v){
+    const stop=new Set(['the','and','of','area','town','city','jalan','road','street','selangor','malaysia','kl','kuala','lumpur']);
+    return normalizeArea(v).split(' ').filter(x=>x.length>=3 && !stop.has(x));
+  }
+
+  function isAvailableBooking(b){
+    return String(b.status||'').toLowerCase()==='available' && !String(b.driverUid||'').trim();
+  }
+
+  function recommendationRows(driver,preferredLocation){
+    const p=state.profiles.get(driver.docId)||{};
+    const vehicle=p.vehicleType||driver.vehicleType||'';
+    const languages=(p.languages||driver.languages||[]).map(x=>String(x).toLowerCase());
+    const area=normalizeArea(preferredLocation);
+    const tokens=areaTokens(preferredLocation);
+    if(!area)return [];
+    return state.bookings.filter(isAvailableBooking).map(b=>{
+      const pickup=normalizeArea(b.pickup);
+      const pickupTokens=new Set(areaTokens(b.pickup));
+      let score=0;
+      const reasons=[];
+      if(pickup.includes(area) || area.includes(pickup) && pickup.length>=4){score+=70;reasons.push('pickup area matches');}
+      const matched=tokens.filter(t=>pickupTokens.has(t));
+      if(matched.length){score+=Math.min(30,matched.length*15);reasons.push('area keyword match');}
+      if(vehicle && b.vehicleType && String(b.vehicleType).toLowerCase()===String(vehicle).toLowerCase()){score+=25;reasons.push('vehicle matches');}
+      if(b.language && languages.length && languages.includes(String(b.language).toLowerCase())){score+=15;reasons.push('language matches');}
+      return {...b,_score:score,_reasons:reasons};
+    }).filter(b=>b._score>0).sort((a,b)=>b._score-a._score).slice(0,8);
+  }
+
+  function recommendBookingMessage(driver,b){
+    return [
+      'Airport Transfer Job Recommendation',
+      '',
+      'Hi '+(driver.displayName||'Driver')+',',
+      'We have an available airport transfer that may suit your preferred pickup area.',
+      '',
+      'Booking: '+(b.id||b.docId||''),
+      'Pickup: '+(b.pickup||''),
+      'Destination: '+(b.destination||''),
+      'Date: '+(b.date||'')+' '+(b.time||''),
+      'Vehicle: '+(b.vehicleType||''),
+      'Preferred language: '+(b.language||'Any'),
+      '',
+      'Please reply if you would like to accept this job.'
+    ].join('\\n');
+  }
+
+  function recommendationHtml(driver,preferredLocation){
+    const rows=recommendationRows(driver,preferredLocation);
+    if(!rows.length)return '<div class="driver-recommendations-empty">No available booking currently matches this preferred pickup area.</div>';
+    return '<div class="driver-recommendations">'+
+      '<div class="driver-recommendations-head"><b>📍 Nearby job recommendations</b><span>'+rows.length+' possible match'+(rows.length===1?'':'es')+'</span></div>'+
+      rows.map(b=>'<div class="driver-recommendation-card">'+
+        '<div><b>'+esc(b.id||b.docId||'Booking')+'</b><p>'+esc(b.pickup||'')+' → '+esc(b.destination||'')+'</p><small>'+esc(b.date||'')+' '+esc(b.time||'')+' • '+esc(b.vehicleType||'')+' • '+esc(b.language||'Any language')+'</small></div>'+
+        '<div class="driver-recommendation-reasons">'+esc(b._reasons.join(' • '))+'</div>'+
+        '<a class="primary recommend-driver-button" href="'+whatsapp(p.driverWhatsApp||dWhatsApp(driver)||'',driver.displayName||'')+'" target="_blank" rel="noopener">💬 Recommend</a>'+
+      '</div>').join('')+
+    '</div>';
+  }
+
+  function dWhatsApp(driver){
+    const p=state.profiles.get(driver.docId)||{};
+    return p.whatsappNumber||driver.whatsappNumber||'';
+  }
+
   async function removeDuplicateDriverData(uid,email){
     if(state.role!=='admin' || !uid || String(email||'').toLowerCase()!==DUPLICATE_DRIVER_EMAIL)return;
     const ok=confirm(
@@ -114,6 +188,7 @@ const ADMIN_DRIVER_MODULE_VERSION='1.1';
     const plate=p.plateNumber||d.plateNumber||'Not provided';
     const wa=p.whatsappNumber||d.whatsappNumber||'';
     const preferredLocation=p.preferredLocation||d.preferredLocation||'';
+    const driverWhatsApp=dWhatsApp(d);
     const languages=p.languages||d.languages||[];
     const selfie=p.selfieDataUrl||'';
     const car=p.carPhotoDataUrl||'';
@@ -159,8 +234,10 @@ const ADMIN_DRIVER_MODULE_VERSION='1.1';
       '<div class="admin-driver-actions">'+
         (wa?'<a class="whatsapp-button" href="'+whatsapp(wa,name)+'" target="_blank" rel="noopener">💬 WhatsApp driver</a>':'')+
         (d.email?'<a class="map-link" href="mailto:'+encodeURIComponent(d.email)+'">✉️ Email</a>':'')+
+        (preferredLocation?'<button class="primary recommend-area-button" type="button" data-driver-uid="'+esc(d.docId)+'">📍 Find nearby jobs</button>':'')+
         (isDuplicate?'<button class="danger admin-delete-duplicate" type="button" data-driver-uid="'+esc(d.docId)+'" data-driver-email="'+esc(d.email)+'">🗑 Remove duplicate driver data</button>':'')+
       '</div>'+
+      (preferredLocation?'<div class="driver-recommendations-wrap" id="recommendations-'+esc(d.docId)+'">'+recommendationHtml(d,preferredLocation)+'</div>':'')+
       (isDuplicate?'<small class="admin-duplicate-warning">Duplicate identified by email: '+esc(DUPLICATE_DRIVER_EMAIL)+'. Existing booking history is preserved. Firebase Authentication must be deleted separately in Firebase Console.</small>':'')+
     '</article>';
   }
@@ -207,6 +284,17 @@ const ADMIN_DRIVER_MODULE_VERSION='1.1';
     const searchBtn=e.target.closest?.('#adminDriverSearchButton');
     const clearBtn=e.target.closest?.('#adminDriverSearchClear');
     const deleteBtn=e.target.closest?.('.admin-delete-duplicate');
+    const recommendBtn=e.target.closest?.('.recommend-area-button');
+    if(recommendBtn){
+      e.preventDefault();
+      const driver=state.drivers.find(d=>d.docId===recommendBtn.dataset.driverUid);
+      const p=driver?state.profiles.get(driver.docId)||{}:{};
+      const loc=p.preferredLocation||driver?.preferredLocation||'';
+      const wrap=document.querySelector('#recommendations-'+recommendBtn.dataset.driverUid);
+      if(wrap)wrap.innerHTML=recommendationHtml(driver,loc);
+      wrap?.scrollIntoView({behavior:'smooth',block:'start'});
+      return;
+    }
     if(searchBtn){e.preventDefault();runSearch();return;}
     if(clearBtn){e.preventDefault();clearSearch();return;}
     if(deleteBtn){
