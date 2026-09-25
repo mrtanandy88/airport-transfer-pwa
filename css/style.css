@@ -247,3 +247,20 @@ main{width:100%;padding:16px}
 .driver-recommendation-reasons{margin:8px 0;font-size:11px;font-weight:700;color:#166534}
 .recommend-driver-button{display:block;text-align:center;text-decoration:none;margin-top:8px}
 .driver-recommendations-empty{padding:12px;border:1px dashed #93c5fd;border-radius:12px;background:#f8fafc;color:#475569;font-size:13px}
+
+/* V26 driver photo zoom viewer */
+.zoomable-driver-photo{cursor:zoom-in}
+.admin-driver-avatar.zoomable-driver-photo{cursor:zoom-in}
+.driver-image-viewer{position:fixed;inset:0;z-index:1000;display:none;align-items:center;justify-content:center;padding:20px}
+.driver-image-viewer.open{display:flex}
+.driver-image-viewer-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.82);backdrop-filter:blur(4px)}
+.driver-image-viewer-dialog{position:relative;z-index:1;max-width:min(94vw,900px);max-height:92vh;display:flex;flex-direction:column;align-items:center;gap:10px}
+.driver-image-viewer-dialog img{display:block;max-width:94vw;max-height:82vh;width:auto;height:auto;object-fit:contain;border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.45);background:#111}
+.driver-image-viewer-close{position:absolute;right:-8px;top:-48px;width:40px;height:40px;border:0;border-radius:50%;background:#fff;color:#111827;font-size:30px;line-height:1;cursor:pointer;z-index:2}
+.driver-image-viewer-caption{color:#fff;font-size:13px;font-weight:700;text-align:center}
+@media(max-width:520px){
+  .driver-image-viewer{padding:12px}
+  .driver-image-viewer-dialog{max-width:100vw;max-height:94vh}
+  .driver-image-viewer-dialog img{max-width:96vw;max-height:84vh;border-radius:10px}
+  .driver-image-viewer-close{right:0;top:-46px}
+}
