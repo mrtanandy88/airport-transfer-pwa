@@ -70,25 +70,63 @@ const ADMIN_DRIVER_MODULE_VERSION='1.1';
     return String(b.status||'').toLowerCase()==='available' && !String(b.driverUid||'').trim();
   }
 
+  function distanceKm(lat1,lng1,lat2,lng2){
+    const a1=Number(lat1),o1=Number(lng1),a2=Number(lat2),o2=Number(lng2);
+    if(![a1,o1,a2,o2].every(Number.isFinite))return null;
+    const rad=Math.PI/180,R=6371,dLat=(a2-a1)*rad,dLng=(o2-o1)*rad;
+    const h=Math.sin(dLat/2)**2+Math.cos(a1*rad)*Math.cos(a2*rad)*Math.sin(dLng/2)**2;
+    return R*2*Math.atan2(Math.sqrt(h),Math.sqrt(1-h));
+  }
+
   function recommendationRows(driver,preferredLocation){
     const p=state.profiles.get(driver.docId)||{};
     const vehicle=p.vehicleType||driver.vehicleType||'';
     const languages=(p.languages||driver.languages||[]).map(x=>String(x).toLowerCase());
     const area=normalizeArea(preferredLocation);
     const tokens=areaTokens(preferredLocation);
-    if(!area)return [];
+    const dLat=Number(p.preferredLocationLat??driver.preferredLocationLat);
+    const dLng=Number(p.preferredLocationLng??driver.preferredLocationLng);
+    const hasGps=Number.isFinite(dLat)&&Number.isFinite(dLng);
+
+    if(!area&&!hasGps)return [];
+
     return state.bookings.filter(isAvailableBooking).map(b=>{
       const pickup=normalizeArea(b.pickup);
       const pickupTokens=new Set(areaTokens(b.pickup));
+      const km=distanceKm(dLat,dLng,b.pickupLat,b.pickupLng);
       let score=0;
       const reasons=[];
-      if(pickup.includes(area) || area.includes(pickup) && pickup.length>=4){score+=70;reasons.push('pickup area matches');}
-      const matched=tokens.filter(t=>pickupTokens.has(t));
-      if(matched.length){score+=Math.min(30,matched.length*15);reasons.push('area keyword match');}
-      if(vehicle && b.vehicleType && String(b.vehicleType).toLowerCase()===String(vehicle).toLowerCase()){score+=25;reasons.push('vehicle matches');}
-      if(b.language && languages.length && languages.includes(String(b.language).toLowerCase())){score+=15;reasons.push('language matches');}
-      return {...b,_score:score,_reasons:reasons};
-    }).filter(b=>b._score>0).sort((a,b)=>b._score-a._score).slice(0,8);
+
+      if(km!==null){
+        if(km<=5){score+=100;reasons.push(km.toFixed(1)+' km away');}
+        else if(km<=10){score+=75;reasons.push(km.toFixed(1)+' km away');}
+        else if(km<=20){score+=45;reasons.push(km.toFixed(1)+' km away');}
+        else return null;
+      }else{
+        if(area && (pickup.includes(area) || (area.includes(pickup)&&pickup.length>=4))){
+          score+=70;reasons.push('pickup area matches');
+        }
+        const matched=tokens.filter(t=>pickupTokens.has(t));
+        if(matched.length){
+          score+=Math.min(30,matched.length*15);
+          reasons.push('area keyword match');
+        }
+      }
+
+      if(vehicle && b.vehicleType && String(b.vehicleType).toLowerCase()===String(vehicle).toLowerCase()){
+        score+=25;reasons.push('vehicle matches');
+      }
+      if(b.language && languages.length && languages.includes(String(b.language).toLowerCase())){
+        score+=15;reasons.push('language matches');
+      }
+
+      return {...b,_score:score,_distanceKm:km,_reasons:reasons};
+    }).filter(Boolean).filter(b=>b._score>0).sort((a,b)=>{
+      if(a._distanceKm!==null&&b._distanceKm!==null)return a._distanceKm-b._distanceKm;
+      if(a._distanceKm!==null)return -1;
+      if(b._distanceKm!==null)return 1;
+      return b._score-a._score;
+    }).slice(0,8);
   }
 
   function recommendBookingMessage(driver,b){
@@ -226,7 +264,7 @@ const ADMIN_DRIVER_MODULE_VERSION='1.1';
         '<div class="admin-driver-detail-section"><h4>🚗 Vehicle</h4><p>Type: <b>'+esc(vehicle)+'</b><br>Model: <b>'+esc(model)+'</b><br>Colour: <b>'+esc(color)+'</b><br>Plate: <b>'+esc(plate)+'</b></p></div>'+
         '<div class="admin-driver-detail-section"><h4>📱 Contact</h4><p>Email: <b>'+esc(d.email||'Not provided')+'</b><br>WhatsApp: <b>'+esc(wa||'Not provided')+'</b></p></div>'+
         '<div class="admin-driver-detail-section"><h4>🗣️ Languages</h4><p>'+esc(languages.join(', ')||'None provided')+'</p></div>'+
-        '<div class="admin-driver-detail-section"><h4>📍 Preferred pickup area</h4><p>'+esc(preferredLocation||'Not provided')+'</p><small class="muted">Use this area to recommend nearby pickup jobs to the driver.</small></div>'+
+        '<div class="admin-driver-detail-section"><h4>📍 Preferred pickup area</h4><p>'+esc(preferredLocation||'Not provided')+'</p><small class="muted">'+((p.preferredLocationLat!=null&&p.preferredLocationLng!=null)?'GPS saved. Nearby pickup jobs are matched within 20 km.':'GPS not saved yet. Area text matching is used.')+'</small></div>'+
         '<div class="admin-driver-detail-section"><h4>📅 Private unavailable schedule</h4>'+scheduleHtml(d.docId)+'</div>'+
         '<div class="admin-driver-detail-section"><h4>🧳 Current / active jobs</h4>'+jobs+'</div>'+
         '<div class="admin-driver-detail-section"><h4>🆔 Account</h4><p>Driver UID: <code>'+esc(d.docId)+'</code></p></div>'+
