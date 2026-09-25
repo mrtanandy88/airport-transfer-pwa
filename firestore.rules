@@ -44,15 +44,18 @@ service cloud.firestore {
       allow update: if admin()
         || (signedIn() && request.auth.uid == uid
           && resource.data.role == 'driver'
-          && request.resource.data.role == 'driver'
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'displayName','vehicleType','carModel','carColor','languages','plateNumber','whatsappNumber','preferredLocation','preferredLocationLat','preferredLocationLng'
+          ])
           && validVehicle(request.resource.data.vehicleType)
           && validCarModel(request.resource.data.carModel)
           && validCarColor(request.resource.data.carColor)
           && validPlate(request.resource.data.plateNumber)
           && validWhatsApp(request.resource.data.whatsappNumber)
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'displayName','vehicleType','carModel','carColor','languages','plateNumber','whatsappNumber','preferredLocation','preferredLocationLat','preferredLocationLng'
-          ]));
+          && validPreferredLocation(request.resource.data.preferredLocation)
+          && (!('preferredLocationLat' in request.resource.data) || request.resource.data.preferredLocationLat == null || validCoordinate(request.resource.data.preferredLocationLat))
+          && (!('preferredLocationLng' in request.resource.data) || request.resource.data.preferredLocationLng == null || validCoordinate(request.resource.data.preferredLocationLng)));
 
       allow delete: if admin();
     }
@@ -71,6 +74,10 @@ service cloud.firestore {
 
       allow update: if admin()
         || (signedIn() && role('driver') && request.auth.uid == uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'displayName','vehicleType','carModel','carColor','plateNumber','whatsappNumber',
+            'languages','preferredLocation','preferredLocationLat','preferredLocationLng','selfieDataUrl','carPhotoDataUrl','updatedAt'
+          ])
           && validVehicle(request.resource.data.vehicleType)
           && validCarModel(request.resource.data.carModel)
           && validCarColor(request.resource.data.carColor)
@@ -80,11 +87,7 @@ service cloud.firestore {
           && (!('preferredLocationLat' in request.resource.data) || request.resource.data.preferredLocationLat == null || validCoordinate(request.resource.data.preferredLocationLat))
           && (!('preferredLocationLng' in request.resource.data) || request.resource.data.preferredLocationLng == null || validCoordinate(request.resource.data.preferredLocationLng))
           && validPhoto(request.resource.data.selfieDataUrl)
-          && validPhoto(request.resource.data.carPhotoDataUrl)
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'displayName','vehicleType','carModel','carColor','plateNumber','whatsappNumber',
-            'languages','preferredLocation','preferredLocationLat','preferredLocationLng','selfieDataUrl','carPhotoDataUrl','updatedAt'
-          ]));
+          && validPhoto(request.resource.data.carPhotoDataUrl));
 
       allow delete: if admin();
     }
