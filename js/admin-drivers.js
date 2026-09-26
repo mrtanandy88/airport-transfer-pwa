@@ -1,4 +1,4 @@
-const ADMIN_DRIVER_MODULE_VERSION='1.1';
+const ADMIN_DRIVER_MODULE_VERSION='1.2';
 
 (async function(){
   const waitForFirebase=()=>new Promise(resolve=>{
@@ -140,33 +140,34 @@ const ADMIN_DRIVER_MODULE_VERSION='1.1';
     const language=b.language||'Any';
     const passengers=b.passengers??'';
     const luggage=b.luggage??0;
+    const nl=String.fromCharCode(10);
     const lines=[
-      '✈️ AIRPORT TRANSFER — JOB OPPORTUNITY',
-      '',
+      '✈️ AIRPORT TRANSFER JOB',
+      '━━━━━━━━━━━━━━━━━━━━',
       'Hi '+driverName+',',
       '',
-      'A new airport transfer booking is available and may match your preferred pickup area.',
+      'A new airport transfer job is available and may match your preferred pickup area.',
       '',
       '📋 BOOKING DETAILS',
       'Booking ID: '+bookingId,
-      'Pickup: '+pickup,
-      'Destination: '+destination,
-      'Date: '+date,
-      'Time: '+time,
-      'Vehicle: '+vehicle,
-      'Preferred language: '+language,
-      'Passengers: '+passengers,
-      'Luggage: '+luggage,
+      '📍 Pickup: '+pickup,
+      '🏁 Destination: '+destination,
+      '📅 Date: '+date,
+      '⏰ Time: '+time,
+      '🚘 Vehicle: '+vehicle,
+      '🗣 Preferred language: '+language,
+      '👥 Passengers: '+passengers,
+      '🧳 Luggage: '+luggage,
       '',
-      '📍 MATCH',
-      'This booking was recommended based on your preferred pickup area, vehicle type and language preference.',
+      '📍 MATCH REASON',
+      'This job was recommended based on your preferred pickup area, vehicle type and language preference.',
       '',
-      'Please open the Airport Transfer PWA to review the full booking details and accept the job if you are available.',
+      '👉 Please open the Airport Transfer PWA to review the full booking details and accept the job if you are available.',
       '',
       'Thank you,',
       'Airport Transfer Team'
     ];
-    return lines.join('\n');
+    return lines.join(nl);
   }
   function recommendationHtml(driver,preferredLocation){
     const rows=recommendationRows(driver,preferredLocation);
