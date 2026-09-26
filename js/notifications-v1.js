@@ -29,6 +29,7 @@ const NOTIFICATION_STYLE = `
 .notification-enable:disabled{opacity:.65}
 .notification-toast{pointer-events:auto;display:flex;gap:10px;align-items:flex-start;max-width:min(380px,calc(100vw - 28px));margin-top:10px;padding:13px 14px;border-radius:16px;background:#111827;color:#fff;box-shadow:0 14px 34px rgba(15,23,42,.25);font-size:14px;line-height:1.4}
 .notification-toast.trip{border-left:5px solid #22c55e}
+.notification-toast.new-booking{border-left:5px solid #f59e0b;background:#172554}
 .notification-toast.success{background:#166534}
 .notification-toast.error{background:#991b1b}
 .notification-toast button{border:0;background:transparent;color:inherit;font-size:20px;line-height:1;padding:0;cursor:pointer;margin-left:auto}
@@ -183,7 +184,19 @@ function bookingTitle(booking) {
 }
 
 function notifyStatusChange(booking, oldBooking) {
-  if (!oldBooking) return;
+  if (!oldBooking) {
+    if (currentRole === 'admin' && booking.status === 'Available') {
+      const message = '🚨 New airport transfer booking ' + bookingTitle(booking) + ' from ' + (booking.name || 'customer') + '.';
+      const route = booking.pickup && booking.destination ? ' ' + booking.pickup + ' → ' + booking.destination + '.' : '';
+      showToast(message + route, 'new-booking');
+      sendBrowserNotification(
+        '🚨 New airport transfer booking',
+        bookingTitle(booking) + ' • ' + (booking.name || 'Customer') + (route ? ' • ' + booking.pickup + ' → ' + booking.destination : ''),
+        booking.docId || booking.id || 'new-booking'
+      );
+    }
+    return;
+  }
 
   const oldTrip = oldBooking.tripStatus || (oldBooking.status === 'Accepted' ? 'Accepted' : '');
   const newTrip = booking.tripStatus || (booking.status === 'Accepted' ? 'Accepted' : '');
@@ -207,7 +220,6 @@ function notifyStatusChange(booking, oldBooking) {
     sendBrowserNotification('Driver assigned • ' + bookingTitle(booking), message, booking.docId || booking.id || 'accepted');
   }
 }
-
 function handleBookingSnapshot(snap) {
   const next = new Map();
 
