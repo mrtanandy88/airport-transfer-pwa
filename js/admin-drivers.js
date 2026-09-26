@@ -130,23 +130,44 @@ const ADMIN_DRIVER_MODULE_VERSION='1.1';
   }
 
   function recommendBookingMessage(driver,b){
-    return [
-      'Airport Transfer Job Recommendation',
+    const driverName=driver.displayName||'Driver';
+    const bookingId=b.id||b.docId||'';
+    const date=b.date||'';
+    const time=b.time||'';
+    const pickup=b.pickup||'';
+    const destination=b.destination||'';
+    const vehicle=b.vehicleType||'';
+    const language=b.language||'Any';
+    const passengers=b.passengers??'';
+    const luggage=b.luggage??0;
+    const lines=[
+      '✈️ AIRPORT TRANSFER — JOB OPPORTUNITY',
       '',
-      'Hi '+(driver.displayName||'Driver')+',',
-      'We have an available airport transfer that may suit your preferred pickup area.',
+      'Hi '+driverName+',',
       '',
-      'Booking: '+(b.id||b.docId||''),
-      'Pickup: '+(b.pickup||''),
-      'Destination: '+(b.destination||''),
-      'Date: '+(b.date||'')+' '+(b.time||''),
-      'Vehicle: '+(b.vehicleType||''),
-      'Preferred language: '+(b.language||'Any'),
+      'A new airport transfer booking is available and may match your preferred pickup area.',
       '',
-      'Please reply if you would like to accept this job.'
-    ].join('\\n');
+      '📋 BOOKING DETAILS',
+      'Booking ID: '+bookingId,
+      'Pickup: '+pickup,
+      'Destination: '+destination,
+      'Date: '+date,
+      'Time: '+time,
+      'Vehicle: '+vehicle,
+      'Preferred language: '+language,
+      'Passengers: '+passengers,
+      'Luggage: '+luggage,
+      '',
+      '📍 MATCH',
+      'This booking was recommended based on your preferred pickup area, vehicle type and language preference.',
+      '',
+      'Please open the Airport Transfer PWA to review the full booking details and accept the job if you are available.',
+      '',
+      'Thank you,',
+      'Airport Transfer Team'
+    ];
+    return lines.join('\n');
   }
-
   function recommendationHtml(driver,preferredLocation){
     const rows=recommendationRows(driver,preferredLocation);
     if(!rows.length)return '<div class="driver-recommendations-empty">No available booking currently matches this preferred pickup area.</div>';
