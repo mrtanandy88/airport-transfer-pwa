@@ -165,7 +165,7 @@ const ADMIN_DRIVER_MODULE_VERSION='1.2';
       '👉 Please open the Airport Transfer PWA to review the full booking details and accept the job if you are available.',
       '',
       'Thank you,',
-      'Airport Transfer Team'
+      '365 Transport and Tour Services'
     ];
     return lines.join(nl);
   }
