@@ -5,6 +5,7 @@ const SKEY = 'airportTransferSchedulesV3';
 const VEHICLES = ['Sedan', 'SUV', 'MPV'];
 const LANGUAGES = ['English', 'Malay', 'Mandarin', 'Cantonese', 'Tamil'];
 const ADMIN_WHATSAPP = '60173858996';
+const COMPANY_NAME = '365 Transport and Tour Services';
 const TRIP_STATUSES = ['Accepted','OnTheWay','ArrivedPickup','PickedUp','ArrivedDestination','DroppedOff','Completed'];
 const TRIP_STATUS_LABELS = {Accepted:'Accepted',OnTheWay:'Driver On The Way',ArrivedPickup:'Arrived At Pickup',PickedUp:'Customer Picked Up',ArrivedDestination:'Arrived At Destination',DroppedOff:'Customer Dropped Off',Completed:'Completed'};
 const TRIP_STATUS_ICONS = {Accepted:'✅',OnTheWay:'🚗',ArrivedPickup:'📍',PickedUp:'👤',ArrivedDestination:'🏁',DroppedOff:'🛬',Completed:'🎉'};
@@ -324,15 +325,49 @@ window.acceptJob=acceptJob;
 function normalizeWhatsAppNumber(value){ return String(value||'').replace(/\D/g,''); }
 function whatsappUrl(number,message=''){ const n=normalizeWhatsAppNumber(number); return 'https://wa.me/'+n+(message?'?text='+encodeURIComponent(message):''); }
 function bookingWhatsAppMessage(b,mode='support'){
-  const title=mode==='group' ? 'Airport Transfer WhatsApp Group Setup' : mode==='newBooking' ? '🚨 NEW AIRPORT TRANSFER BOOKING' : 'Airport Transfer Customer Service';
+  const nl=String.fromCharCode(10);
+  if(mode==='newBooking'){
+    const lines=[
+      '🚨 NEW AIRPORT TRANSFER BOOKING',
+      '━━━━━━━━━━━━━━━━━━━━',
+      'Hello 365 Transport and Tour Services,',
+      '',
+      'A new airport transfer booking has just been placed.',
+      '',
+      '📋 BOOKING DETAILS',
+      'Booking ID: '+(b.id||b.docId||''),
+      '👤 Customer: '+(b.name||'')+(b.phone?' • '+b.phone:''),
+      '📍 Pickup: '+(b.pickup||''),
+      '🏁 Destination: '+(b.destination||''),
+      '📅 Date: '+(b.date||''),
+      '⏰ Time: '+(b.time||''),
+      '🚘 Vehicle: '+(b.vehicleType||''),
+      '🗣 Preferred language: '+(b.language||'Any'),
+      '👥 Passengers: '+(b.passengers??''),
+      '🧳 Luggage: '+(b.luggage??0),
+      b.flightNumber?'✈️ Flight: '+b.flightNumber:'',
+      b.terminal?'🏢 Terminal: '+b.terminal:'',
+      '',
+      '📌 STATUS',
+      'Awaiting driver assignment',
+      '',
+      '👉 Please open the Airport Transfer PWA to review the booking and arrange a suitable driver.',
+      '',
+      'Thank you,',
+      '365 Transport and Tour Services'
+    ];
+    return lines.filter(Boolean).join(nl);
+  }
+
+  const title=mode==='group' ? 'Airport Transfer WhatsApp Group Setup' : 'Airport Transfer Customer Service';
   const lines=[title,'',
     'Booking: '+(b.id||''),'Customer: '+(b.name||'')+' • '+(b.phone||''),'Pickup: '+(b.pickup||''),'Destination: '+(b.destination||''),'Trip: '+formatDateTime(b.date,b.time),
     'Vehicle: '+(b.vehicleType||''),'Preferred language: '+(b.language||'Any'),'Trip status: '+(TRIP_STATUS_LABELS[b.tripStatus]||'Awaiting driver'),
     'Passengers: '+(b.passengers??''),'Luggage: '+(b.luggage??0),
     b.flightNumber?'Flight: '+b.flightNumber:'', b.terminal?'Terminal: '+b.terminal:'',
     'Driver: '+(b.driver||'Not assigned'),'Driver WhatsApp: '+(b.driverWhatsApp||'Not provided'),'Customer WhatsApp: '+(b.phone||''),'',
-    mode==='group' ? 'Please create a WhatsApp group for this transfer and add the customer, driver and admin.' : mode==='newBooking' ? 'A customer has just placed this booking. Please review it in the Admin Dashboard.' : 'Please assist with this airport transfer booking.'];
-  return lines.filter(Boolean).join('\n');
+    mode==='group' ? 'Please create a WhatsApp group for this transfer and add the customer, driver and admin.' : 'Please assist with this airport transfer booking.'];
+  return lines.filter(Boolean).join(nl);
 }
 function adminWhatsAppLink(b,mode='support'){ return whatsappUrl(ADMIN_WHATSAPP,bookingWhatsAppMessage(b,mode)); }
 function formatTimestamp(value){
