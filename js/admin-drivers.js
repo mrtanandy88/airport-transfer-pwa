@@ -140,34 +140,42 @@ const ADMIN_DRIVER_MODULE_VERSION='1.2';
     const language=b.language||'Any';
     const passengers=b.passengers??'';
     const luggage=b.luggage??0;
+    const driverLanguages=(state.profiles.get(driver.docId)?.languages||driver.languages||[]).map(x=>String(x).toLowerCase());
+    const msgLang=driverLanguages.includes('mandarin')?'zh':driverLanguages.includes('malay')?'ms':'en';
     const nl=String.fromCharCode(10);
-    const lines=[
-      '✈️ AIRPORT TRANSFER JOB',
-      '━━━━━━━━━━━━━━━━━━━━',
-      'Hi '+driverName+',',
-      '',
-      'A new airport transfer job is available and may match your preferred pickup area.',
-      '',
-      '📋 BOOKING DETAILS',
-      'Booking ID: '+bookingId,
-      '📍 Pickup: '+pickup,
-      '🏁 Destination: '+destination,
-      '📅 Date: '+date,
-      '⏰ Time: '+time,
-      '🚘 Vehicle: '+vehicle,
-      '🗣 Preferred language: '+language,
-      '👥 Passengers: '+passengers,
-      '🧳 Luggage: '+luggage,
-      '',
-      '📍 MATCH REASON',
-      'This job was recommended based on your preferred pickup area, vehicle type and language preference.',
-      '',
-      '👉 Please open the Airport Transfer PWA to review the full booking details and accept the job if you are available.',
-      '',
-      'Thank you,',
-      '365 Transport and Tour Services'
-    ];
-    return lines.join(nl);
+    const templates={
+      en:{
+        title:'✈️ AIRPORT TRANSFER JOB',hello:'Hi '+driverName+',',
+        intro:'A new airport transfer job is available and may match your preferred pickup area.',
+        details:'📋 BOOKING DETAILS',id:'Booking ID:',pickup:'📍 Pickup:',destination:'🏁 Destination:',date:'📅 Date:',time:'⏰ Time:',vehicle:'🚘 Vehicle:',language:'🗣 Preferred language:',passengers:'👥 Passengers:',luggage:'🧳 Luggage:',
+        reasonTitle:'📍 MATCH REASON',reason:'This job was recommended based on your preferred pickup area, vehicle type and language preference.',
+        action:'👉 Please open the Airport Transfer PWA to review the full booking details and accept the job if you are available.',
+        thanks:'Thank you,',company:'365 Transport and Tour Services'
+      },
+      zh:{
+        title:'✈️ 机场接送订单',hello:'您好 '+driverName+'，',
+        intro:'现有一份新的机场接送订单，可能符合您的首选接载区域。',
+        details:'📋 订单详情',id:'订单编号：',pickup:'📍 接载地点：',destination:'🏁 目的地：',date:'📅 日期：',time:'⏰ 时间：',vehicle:'🚘 车型：',language:'🗣 首选语言：',passengers:'👥 乘客：',luggage:'🧳 行李：',
+        reasonTitle:'📍 推荐原因',reason:'系统根据您的首选接载区域、车型和语言偏好推荐此订单。',
+        action:'👉 请打开 Airport Transfer PWA 查看完整订单资料；如您有空，请接受此订单。',
+        thanks:'谢谢，',company:'365 Transport and Tour Services'
+      },
+      ms:{
+        title:'✈️ TUGAS PEMINDAHAN LAPANGAN TERBANG',hello:'Salam '+driverName+',',
+        intro:'Tugasan pemindahan lapangan terbang baharu tersedia dan mungkin sesuai dengan kawasan pengambilan pilihan anda.',
+        details:'📋 BUTIRAN TEMPAHAN',id:'ID Tempahan:',pickup:'📍 Pengambilan:',destination:'🏁 Destinasi:',date:'📅 Tarikh:',time:'⏰ Masa:',vehicle:'🚘 Kenderaan:',language:'🗣 Bahasa pilihan:',passengers:'👥 Penumpang:',luggage:'🧳 Bagasi:',
+        reasonTitle:'📍 SEBAB CADANGAN',reason:'Tugasan ini dicadangkan berdasarkan kawasan pengambilan pilihan, jenis kenderaan dan pilihan bahasa anda.',
+        action:'👉 Sila buka Airport Transfer PWA untuk melihat butiran penuh dan terima tugasan jika anda tersedia.',
+        thanks:'Terima kasih,',company:'365 Transport and Tour Services'
+      }
+    };
+    const t=templates[msgLang]||templates.en;
+    return [
+      t.title,'━━━━━━━━━━━━━━━━━━━━',t.hello,'',t.intro,'',t.details,
+      t.id+' '+bookingId,t.pickup+' '+pickup,t.destination+' '+destination,t.date+' '+date,t.time+' '+time,
+      t.vehicle+' '+vehicle,t.language+' '+language,t.passengers+' '+passengers,t.luggage+' '+luggage,'',
+      t.reasonTitle,t.reason,'',t.action,'',t.thanks,t.company
+    ].join(nl);
   }
   function recommendationHtml(driver,preferredLocation){
     const rows=recommendationRows(driver,preferredLocation);
