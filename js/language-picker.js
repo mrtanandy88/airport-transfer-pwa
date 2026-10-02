@@ -2,6 +2,8 @@
   function initLanguagePicker(select) {
     if (!select || select.dataset.pickerReady === '1') return;
     select.dataset.pickerReady = '1';
+
+    const isMultiple = select.multiple;
     const wrapper = document.createElement('div');
     wrapper.className = 'language-picker';
     select.parentNode.insertBefore(wrapper, select);
@@ -11,6 +13,7 @@
     button.type = 'button';
     button.className = 'language-picker-button';
     button.setAttribute('aria-expanded', 'false');
+    button.setAttribute('aria-label', isMultiple ? 'Choose languages' : 'Choose preferred driver language');
     wrapper.insertBefore(button, select);
 
     const menu = document.createElement('div');
@@ -18,11 +21,12 @@
     wrapper.appendChild(menu);
 
     const selected = () => [...select.options].filter(o => o.selected).map(o => o.value);
+
     const refreshLabel = () => {
       const values = selected();
       button.innerHTML = values.length
         ? `<span>${values.map(v => escapeHtml(v)).join(' • ')}</span><span class="language-picker-chevron">⌄</span>`
-        : '<span class="muted">Select languages</span><span class="language-picker-chevron">⌄</span>';
+        : `<span class="muted">${isMultiple ? 'Select languages' : 'Select preferred language'}</span><span class="language-picker-chevron">⌄</span>`;
     };
 
     const renderMenu = () => {
@@ -30,15 +34,27 @@
         <button type="button" class="language-option${o.selected ? ' selected' : ''}" data-value="${escapeHtml(o.value)}">
           <span>${escapeHtml(o.value)}</span><span class="language-check">${o.selected ? '✓' : ''}</span>
         </button>`).join('');
+
       menu.querySelectorAll('.language-option').forEach(option => {
         option.addEventListener('click', () => {
           const value = option.dataset.value;
           const target = [...select.options].find(o => o.value === value);
           if (!target) return;
-          target.selected = !target.selected;
+
+          if (isMultiple) {
+            target.selected = !target.selected;
+          } else {
+            [...select.options].forEach(o => { o.selected = o === target; });
+          }
+
           select.dispatchEvent(new Event('change', { bubbles: true }));
           renderMenu();
           refreshLabel();
+
+          if (!isMultiple) {
+            menu.classList.add('hidden');
+            button.setAttribute('aria-expanded', 'false');
+          }
         });
       });
     };
@@ -47,6 +63,7 @@
       const open = !menu.classList.contains('hidden');
       document.querySelectorAll('.language-picker-menu').forEach(m => m.classList.add('hidden'));
       document.querySelectorAll('.language-picker-button').forEach(b => b.setAttribute('aria-expanded', 'false'));
+
       if (!open) {
         renderMenu();
         menu.classList.remove('hidden');
@@ -54,7 +71,11 @@
       }
     });
 
-    select.addEventListener('change', () => { renderMenu(); refreshLabel(); });
+    select.addEventListener('change', () => {
+      renderMenu();
+      refreshLabel();
+    });
+
     document.addEventListener('click', e => {
       if (!wrapper.contains(e.target)) {
         menu.classList.add('hidden');
@@ -70,5 +91,7 @@
     return String(value ?? '').replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
   }
 
-  document.querySelectorAll('#driverLanguages, #driverLanguagesProfile').forEach(initLanguagePicker);
+  document.querySelectorAll(
+    '#bookingForm select[name="language"], #driverLanguages, #driverLanguagesProfile'
+  ).forEach(initLanguagePicker);
 })();
