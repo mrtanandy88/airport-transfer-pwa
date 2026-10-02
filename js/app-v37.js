@@ -327,38 +327,20 @@ function whatsappUrl(number,message=''){ const n=normalizeWhatsAppNumber(number)
 function bookingWhatsAppMessage(b,mode='support'){
   const nl=String.fromCharCode(10);
   if(mode==='newBooking'){
-    const lines=[
-      '🚨 NEW AIRPORT TRANSFER BOOKING',
-      '━━━━━━━━━━━━━━━━━━━━',
-      'Hello 365 Transport and Tour Services,',
-      '',
-      'A new airport transfer booking has just been placed.',
-      '',
-      '📋 BOOKING DETAILS',
-      'Booking ID: '+(b.id||b.docId||''),
-      '👤 Customer: '+(b.name||'')+(b.phone?' • '+b.phone:''),
-      '📍 Pickup: '+(b.pickup||''),
-      '🏁 Destination: '+(b.destination||''),
-      '📅 Date: '+(b.date||''),
-      '⏰ Time: '+(b.time||''),
-      '🚘 Vehicle: '+(b.vehicleType||''),
-      '🗣 Preferred language: '+(b.language||'Any'),
-      '👥 Passengers: '+(b.passengers??''),
-      '🧳 Luggage: '+(b.luggage??0),
-      b.flightNumber?'✈️ Flight: '+b.flightNumber:'',
-      b.terminal?'🏢 Terminal: '+b.terminal:'',
-      '',
-      '📌 STATUS',
-      'Awaiting driver assignment',
-      '',
-      '👉 Please open the Airport Transfer PWA to review the booking and arrange a suitable driver.',
-      '',
-      'Thank you,',
-      '365 Transport and Tour Services'
-    ];
+    const lang=window.getAppLanguage?window.getAppLanguage():'en';
+    const t={
+      en:{title:'🚨 NEW AIRPORT TRANSFER BOOKING',hello:'Hello 365 Transport and Tour Services,',intro:'A new airport transfer booking has just been placed.',details:'📋 BOOKING DETAILS',id:'Booking ID:',customer:'👤 Customer:',pickup:'📍 Pickup:',destination:'🏁 Destination:',date:'📅 Date:',time:'⏰ Time:',vehicle:'🚘 Vehicle:',language:'🗣 Preferred language:',passengers:'👥 Passengers:',luggage:'🧳 Luggage:',flight:'✈️ Flight:',terminal:'🏢 Terminal:',status:'📌 STATUS',awaiting:'Awaiting driver assignment',action:'👉 Please open the Airport Transfer PWA to review the booking and arrange a suitable driver.',thanks:'Thank you,'},
+      zh:{title:'🚨 新机场接送订单',hello:'您好，365 Transport and Tour Services：',intro:'新的机场接送订单刚刚提交。',details:'📋 订单详情',id:'订单编号：',customer:'👤 客户：',pickup:'📍 接载地点：',destination:'🏁 目的地：',date:'📅 日期：',time:'⏰ 时间：',vehicle:'🚘 车型：',language:'🗣 首选语言：',passengers:'👥 乘客：',luggage:'🧳 行李：',flight:'✈️ 航班：',terminal:'🏢 航站楼：',status:'📌 状态',awaiting:'等待司机安排',action:'👉 请打开 Airport Transfer PWA 查看订单详情并安排合适的司机。',thanks:'谢谢，'},
+      ms:{title:'🚨 TEMPAHAN PEMINDAHAN LAPANGAN TERBANG BAHARU',hello:'Salam 365 Transport and Tour Services,',intro:'Tempahan pemindahan lapangan terbang baharu telah diterima.',details:'📋 BUTIRAN TEMPAHAN',id:'ID Tempahan:',customer:'👤 Pelanggan:',pickup:'📍 Pengambilan:',destination:'🏁 Destinasi:',date:'📅 Tarikh:',time:'⏰ Masa:',vehicle:'🚘 Kenderaan:',language:'🗣 Bahasa pilihan:',passengers:'👥 Penumpang:',luggage:'🧳 Bagasi:',flight:'✈️ Penerbangan:',terminal:'🏢 Terminal:',status:'📌 STATUS',awaiting:'Menunggu penetapan pemandu',action:'👉 Sila buka Airport Transfer PWA untuk menyemak tempahan dan mengatur pemandu yang sesuai.',thanks:'Terima kasih,'}
+    }[lang]||null;
+    const x=t||{
+      title:'🚨 NEW AIRPORT TRANSFER BOOKING',hello:'Hello 365 Transport and Tour Services,',intro:'A new airport transfer booking has just been placed.',details:'📋 BOOKING DETAILS',id:'Booking ID:',customer:'👤 Customer:',pickup:'📍 Pickup:',destination:'🏁 Destination:',date:'📅 Date:',time:'⏰ Time:',vehicle:'🚘 Vehicle:',language:'🗣 Preferred language:',passengers:'👥 Passengers:',luggage:'🧳 Luggage:',flight:'✈️ Flight:',terminal:'🏢 Terminal:',status:'📌 STATUS',awaiting:'Awaiting driver assignment',action:'👉 Please open the Airport Transfer PWA to review the booking and arrange a suitable driver.',thanks:'Thank you,'
+    };
+    const lines=[x.title,'━━━━━━━━━━━━━━━━━━━━',x.hello,'',x.intro,'',x.details,
+      x.id+' '+(b.id||b.docId||''),x.customer+' '+(b.name||'')+(b.phone?' • '+b.phone:''),x.pickup+' '+(b.pickup||''),x.destination+' '+(b.destination||''),x.date+' '+(b.date||''),x.time+' '+(b.time||''),x.vehicle+' '+(b.vehicleType||''),x.language+' '+(b.language||'Any'),x.passengers+' '+(b.passengers??''),x.luggage+' '+(b.luggage??0),
+      b.flightNumber?x.flight+' '+b.flightNumber:'',b.terminal?x.terminal+' '+b.terminal:'','',x.status,x.awaiting,'',x.action,'',x.thanks,'365 Transport and Tour Services'];
     return lines.filter(Boolean).join(nl);
   }
-
   const title=mode==='group' ? 'Airport Transfer WhatsApp Group Setup' : 'Airport Transfer Customer Service';
   const lines=[title,'',
     'Booking: '+(b.id||''),'Customer: '+(b.name||'')+' • '+(b.phone||''),'Pickup: '+(b.pickup||''),'Destination: '+(b.destination||''),'Trip: '+formatDateTime(b.date,b.time),
