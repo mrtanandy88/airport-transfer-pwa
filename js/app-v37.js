@@ -3,7 +3,7 @@ import { firebaseConfig, firebaseConfigured } from './firebase-config.js';
 const KEY = 'airportTransferBookingsV5';
 const SKEY = 'airportTransferSchedulesV3';
 const VEHICLES = ['Sedan', 'SUV', 'MPV'];
-const LANGUAGES = ['English', 'Malay', 'Mandarin', 'Cantonese', 'Tamil'];
+const LANGUAGES = ['English', 'Malay', 'Mandarin'];
 const ADMIN_WHATSAPP = '60173858996';
 const COMPANY_NAME = '365 Transport and Tour Services';
 const TRIP_STATUSES = ['Accepted','OnTheWay','ArrivedPickup','PickedUp','ArrivedDestination','DroppedOff','Completed'];
