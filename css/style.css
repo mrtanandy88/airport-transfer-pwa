@@ -264,3 +264,9 @@ main{width:100%;padding:16px}
   .driver-image-viewer-dialog img{max-width:96vw;max-height:84vh;border-radius:10px}
   .driver-image-viewer-close{right:0;top:-46px}
 }
+
+/* V27 trilingual interface */
+.topbar-actions{display:flex;align-items:center;gap:8px}
+.ui-language-selector{display:flex;align-items:center;gap:5px;background:#fff;border:1px solid #dbe4ef;border-radius:999px;padding:4px 8px;color:#111827;font-weight:800;font-size:12px}
+.ui-language-selector select{border:0;background:transparent;font:inherit;color:inherit;outline:0;cursor:pointer;padding:2px 0}
+@media(max-width:520px){.topbar-actions{gap:5px}.ui-language-selector{font-size:11px;padding:3px 6px}.ui-language-selector select{max-width:92px}}
