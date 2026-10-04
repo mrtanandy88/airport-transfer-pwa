@@ -484,3 +484,41 @@ label{color:#344054;font-size:12px;font-weight:800}
   .quote-panel{padding:18px}
   .driver-dashboard-header{padding:18px}
 }
+
+/* V29.1 home-screen visual correction */
+.home-premium-note{display:block}
+@media(max-width:600px){
+  .hero{
+    margin-left:-12px;
+    margin-right:-12px;
+    margin-top:-14px;
+    border-radius:0 0 28px 28px;
+    min-height:290px;
+    display:flex;
+    flex-direction:column;
+    justify-content:flex-end;
+    padding:34px 22px 34px;
+    background:
+      linear-gradient(180deg,rgba(7,18,35,.48),rgba(7,18,35,.98)),
+      linear-gradient(135deg,#0b172a,#1b3151)!important;
+  }
+  .hero h1{color:#fff!important;margin-top:8px}
+  .hero p:not(.eyebrow){color:#d9e1ec!important}
+  .hero .eyebrow{color:#e9d98f!important}
+  .quote-panel{
+    margin-top:18px;
+    border:1px solid #e8d88f;
+    border-radius:22px;
+    padding:20px;
+  }
+  .quote-panel h2{font-size:25px}
+  .quote-panel .two{grid-template-columns:1fr}
+  .grid{gap:10px}
+  .grid .action{
+    min-height:76px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    text-align:left;
+  }
+}
