@@ -579,3 +579,28 @@ input:focus,select:focus,textarea:focus{border-color:#c77724!important;box-shado
 .home-access{margin:0 16px;padding:18px;border-top:1px solid #e4d4c0}.home-access>div:first-child span,.home-access>div:first-child b{display:block}.home-access>div:first-child span{font-size:11px;color:#8a7d73}.home-access>div:first-child b{font-size:14px;margin-top:2px}
 .home-access-buttons{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}.home-access-buttons .action{padding:12px!important;border-left:3px solid #d77a20!important}.home-access-buttons .action b{font-size:12px}.home-access-buttons .action small{font-size:10px}
 @media(max-width:600px){.premium-hero{min-height:410px;padding:34px 20px 30px}.premium-hero h1{font-size:46px!important}.hero-car-mark{right:-10px;bottom:0;width:160px;height:135px;opacity:.48}.hero-car{font-size:82px}.hero-points{max-width:300px}.premium-quote-panel{margin:-5px 12px 16px!important}.home-service-strip{margin-left:12px;margin-right:12px}.home-service-strip{grid-template-columns:1fr}.home-service-strip>div{padding:11px 13px}.home-access{margin-left:12px;margin-right:12px}.home-access-buttons{grid-template-columns:1fr 1fr 1fr}}
+
+
+/* V24: Navy luxury theme */
+:root{--navy:#071d3a;--navy-2:#0b2f5b;--navy-3:#123f73;--navy-soft:#eaf2fb;--navy-border:#c9d8ea;--navy-text:#0b1f3a}
+body{background:#f4f7fb;color:var(--navy-text)}
+.topbar{background:linear-gradient(135deg,#061a35,#0b2f5b)!important;box-shadow:0 4px 18px rgba(7,29,58,.16)}
+.topbar span{background:rgba(255,255,255,.14)}
+.primary,.accept,.complete,.trip-status-button,.map-button{background:var(--navy)!important}
+.secondary,.ghost,.link,.filter{color:var(--navy);border-color:var(--navy-border)}
+.filter.active{background:var(--navy)!important;border-color:var(--navy)!important}
+.notice{background:#edf4fc;border-color:#c9d8ea;color:var(--navy-text)}
+.hero h1,.hero h2,h2,h3{color:var(--navy-text)}
+.card,.panel,.booking{box-shadow:0 6px 22px rgba(7,29,58,.07)}
+.driver-card{border-color:#c9d8ea;background:#f5f9fe}.driver-avatar{border-color:#c9d8ea}.plate-display{border-color:var(--navy)}
+.trip-status-step.current{outline-color:#9db9d8;background:#edf4fc;color:var(--navy-text)}
+.trip-status-button{box-shadow:0 5px 14px rgba(7,29,58,.18)}
+.premium-hero{background:linear-gradient(135deg,#061a35 0%,#0a2b54 55%,#104679 100%)!important}
+.premium-hero h1 em{color:#d7e7fb!important}.premium-hero p{color:#eef6ff!important}
+.hero-points span{background:rgba(255,255,255,.12)!important;color:#fff!important;border:1px solid rgba(255,255,255,.1)}
+.hero-car-mark{width:300px;height:210px;right:0;bottom:0}.hero-car-glow{background:radial-gradient(ellipse,rgba(0,0,0,.42),transparent 68%)}
+.hero-car{right:0;bottom:0;font-size:0;width:100%;height:100%;transform:none;filter:drop-shadow(0 18px 18px rgba(0,0,0,.35))}
+.hero-car img{display:block;width:100%;height:100%;object-fit:contain;object-position:center bottom}
+.premium-quote-panel{border-color:#d5e0ed!important}.quote-badge{color:var(--navy)!important;background:#eaf2fb!important;border-color:#c9d8ea!important}
+.quote-step span{background:var(--navy)!important;color:#fff!important}.home-service-strip>div{border-color:#d5e0ed!important;background:#fff!important}
+@media(max-width:700px){.hero-car-mark{width:210px;height:145px;right:-8px;bottom:-2px;opacity:.92}.premium-hero-copy{position:relative;z-index:2;max-width:92%}}
