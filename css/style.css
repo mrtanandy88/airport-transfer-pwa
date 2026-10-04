@@ -275,3 +275,212 @@ main{width:100%;padding:16px}
 /* Admin booking delete action */
 .admin-delete-booking{margin-top:8px;border-color:#fecaca;color:#b91c1c;background:#fff5f5}
 .admin-delete-booking:hover{background:#fee2e2}
+
+
+/* =========================================================
+   V29 PROFESSIONAL CHAUFFEUR THEME
+   Visual-only layer — existing app functionality preserved.
+   ========================================================= */
+:root{
+  --brand-navy:#0b172a;
+  --brand-navy-2:#13233b;
+  --brand-gold:#c9a227;
+  --brand-gold-soft:#f8f1d7;
+  --surface:#ffffff;
+  --surface-soft:#f6f7f9;
+  --line:#e5e7eb;
+  --text:#101828;
+  --muted:#667085;
+  --success:#15803d;
+  --radius-lg:20px;
+  --radius-md:14px;
+  --shadow-sm:0 4px 16px rgba(15,23,42,.06);
+  --shadow-md:0 12px 34px rgba(15,23,42,.09);
+}
+html{background:var(--surface-soft)}
+body{
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  background:
+    radial-gradient(circle at 100% 0%,rgba(201,162,39,.08),transparent 28rem),
+    var(--surface-soft);
+  color:var(--text);
+  padding-bottom:88px;
+}
+.topbar{
+  min-height:66px;
+  padding:12px max(18px,calc((100vw - 1080px)/2));
+  background:rgba(11,23,42,.97);
+  border-bottom:1px solid rgba(255,255,255,.08);
+  box-shadow:0 8px 28px rgba(15,23,42,.14);
+  backdrop-filter:blur(14px);
+}
+.topbar>div:first-child{display:flex;align-items:center;gap:9px}
+.topbar strong{font-size:16px;letter-spacing:-.02em}
+.topbar span{
+  margin-left:0;
+  background:rgba(201,162,39,.16);
+  color:#f5df8a;
+  border:1px solid rgba(201,162,39,.35);
+  border-radius:999px;
+  padding:4px 8px;
+  font-size:10px;
+  font-weight:800;
+}
+main{max-width:1080px;padding:24px 20px 34px}
+.hero{
+  position:relative;
+  overflow:hidden;
+  padding:48px 34px 40px;
+  border-radius:28px;
+  background:
+    linear-gradient(135deg,rgba(11,23,42,.98),rgba(19,35,59,.95)),
+    var(--brand-navy);
+  color:#fff;
+  box-shadow:var(--shadow-md);
+  margin-bottom:20px;
+}
+.hero:after{
+  content:"✈";
+  position:absolute;
+  right:28px;
+  bottom:-28px;
+  font-size:150px;
+  opacity:.055;
+  transform:rotate(-12deg);
+}
+.hero .eyebrow{color:#e7d27d}
+.hero h1{font-size:clamp(38px,7vw,66px);letter-spacing:-.055em;margin:10px 0 12px;max-width:720px}
+.hero p:not(.eyebrow){color:#d7dee9;max-width:680px;font-size:17px;line-height:1.65}
+.eyebrow{color:#8b95a5;font-size:11px;letter-spacing:.16em;font-weight:850}
+.notice{
+  border:1px solid #e7d27d;
+  background:var(--brand-gold-soft);
+  color:#5f4b0c;
+  border-radius:14px;
+  box-shadow:none;
+}
+.card,.panel,.booking{
+  border:1px solid var(--line);
+  border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-sm);
+}
+.card{transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+.card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);border-color:#d6dbe3}
+.action{padding:20px}
+.action b{font-size:18px;color:var(--brand-navy)}
+.action small{font-size:13px;line-height:1.45}
+.quote-panel{
+  border:1px solid #e6d48b;
+  border-radius:var(--radius-lg);
+  background:linear-gradient(180deg,#fff,#fffdf7);
+  box-shadow:var(--shadow-md);
+  padding:24px;
+}
+.quote-panel h2{font-size:28px;letter-spacing:-.03em;color:var(--brand-navy)}
+input,select,textarea{
+  border:1px solid #d5dae2;
+  border-radius:12px;
+  background:#fff;
+  color:var(--text);
+  min-height:46px;
+  transition:border-color .15s,box-shadow .15s;
+}
+textarea{padding:12px;resize:vertical}
+input:focus,select:focus,textarea:focus{
+  outline:none;
+  border-color:#a8871d;
+  box-shadow:0 0 0 3px rgba(201,162,39,.14);
+}
+label{color:#344054;font-size:12px;font-weight:800}
+.primary{
+  background:linear-gradient(135deg,var(--brand-navy),var(--brand-navy-2));
+  border:1px solid var(--brand-navy);
+  border-radius:12px;
+  min-height:48px;
+  box-shadow:0 6px 14px rgba(11,23,42,.12);
+}
+.primary:hover{filter:brightness(1.08)}
+.secondary,.ghost,.danger,.filter{
+  border-radius:12px;
+  min-height:44px;
+  font-weight:750;
+}
+.secondary{background:#fff;border-color:#d5dae2}
+.secondary:hover{background:#f8fafc}
+.whatsapp-button{border-radius:12px!important}
+.driver-dashboard-header{
+  padding:24px;
+  border-radius:var(--radius-lg);
+  background:#fff;
+  border:1px solid var(--line);
+  box-shadow:var(--shadow-sm);
+}
+.driver-dashboard-header h3{font-size:28px;color:var(--brand-navy)}
+.driver-online{background:#ecfdf3;border:1px solid #b7ebc6}
+.driver-profile-card{box-shadow:var(--shadow-sm)}
+.driver-avatar{border-color:#e7d27d;box-shadow:0 4px 14px rgba(15,23,42,.08)}
+.driver-quick{
+  border-radius:17px;
+  box-shadow:var(--shadow-sm);
+  transition:transform .16s ease,box-shadow .16s ease;
+}
+.driver-quick:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
+.driver-clean-job,.admin-driver-card{
+  border-radius:17px;
+  box-shadow:var(--shadow-sm);
+}
+.driver-section-heading{
+  border-radius:16px;
+  box-shadow:inset 0 -1px rgba(15,23,42,.04);
+}
+.admin-driver-management{
+  border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-md);
+}
+.stats .stat{
+  border-radius:16px;
+  box-shadow:var(--shadow-sm);
+}
+.stat b{color:var(--brand-navy)}
+.filters{
+  padding:4px;
+  background:#eef0f4;
+  border-radius:14px;
+}
+.filter{border-color:transparent;background:transparent}
+.filter.active{background:var(--brand-navy);border-color:var(--brand-navy);box-shadow:0 4px 10px rgba(11,23,42,.15)}
+.trip-status,.location-details,.flight-details,.driver-flight-details{
+  border-radius:16px;
+  box-shadow:var(--shadow-sm);
+}
+.badge{font-weight:800}
+.plate-display,.admin-driver-plate{border-color:#1f2937}
+.bottom{
+  height:76px;
+  padding:8px max(8px,calc((100vw - 1080px)/2));
+  background:rgba(255,255,255,.96);
+  border-top:1px solid var(--line);
+  box-shadow:0 -8px 24px rgba(15,23,42,.07);
+  backdrop-filter:blur(16px);
+}
+.bottom button{
+  border-radius:12px;
+  color:#667085;
+  font-weight:750;
+  transition:background .15s,color .15s;
+}
+.bottom button:hover{background:#f2f4f7;color:var(--brand-navy)}
+.location-button{border-radius:10px}
+.admin-delete-booking{
+  border-radius:10px;
+  font-weight:800;
+}
+.driver-image-viewer-close{box-shadow:0 4px 16px rgba(0,0,0,.2)}
+@media(max-width:600px){
+  main{padding:14px 12px 28px}
+  .hero{padding:34px 22px 30px;border-radius:22px}
+  .hero h1{font-size:38px}
+  .hero p:not(.eyebrow){font-size:15px}
+  .quote-panel{padding:18px}
+  .driver-dashboard-header{padding:18px}
+}
