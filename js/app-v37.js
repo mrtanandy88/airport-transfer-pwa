@@ -742,32 +742,54 @@ function buildHomeQuoteMessage(){
   const time=$('#homeQuoteTime')?.value||'';
   const vehicle=$('#homeQuoteVehicle')?.value||'';
   const passengers=$('#homeQuotePassengers')?.value||'';
-  const luggage=$('#homeQuoteLuggage')?.value||'';
+  const luggage=$('#homeQuoteLuggage')?.value||'0';
   const name=$('#homeQuoteName')?.value.trim()||'';
   const phone=$('#homeQuotePhone')?.value.trim()||'';
+  const discountCode=$('#homeQuoteDiscountCode')?.value.trim()||'';
   if(!pickup||!destination||!date||!time||!vehicle||!passengers||!name||!phone){
     alert('Please complete your name, WhatsApp number, pickup, destination, date, time, vehicle and passengers.');
     return null;
   }
-  return [
-    'Airport Transfer Price Quote Request',
+  const nl=String.fromCharCode(10);
+  const lines=[
+    '✈️ AIRPORT TRANSFER — PRICE QUOTATION REQUEST',
+    '━━━━━━━━━━━━━━━━━━━━',
+    'Hello 365 Transport and Tour Services,',
     '',
-    'Customer: '+name,
-    'WhatsApp: '+phone,
-    'Pickup: '+pickup,
-    'Destination: '+destination,
-    'Trip: '+formatDateTime(date,time),
-    'Vehicle: '+vehicle,
-    'Passengers: '+passengers,
-    'Luggage: '+(luggage||'0'),
-    discountCode?'Discount code: '+discountCode:'',
+    'I would like to request a price quotation for the following airport transfer:',
     '',
-    'Please provide the transparent customer price for this airport transfer.'
-  ].join('\n');
+    '📋 TRIP DETAILS',
+    '👤 Customer: '+name,
+    '📱 WhatsApp: '+phone,
+    '📍 Pickup: '+pickup,
+    '🏁 Destination: '+destination,
+    '📅 Date: '+date,
+    '⏰ Pickup time: '+time,
+    '🚘 Vehicle: '+vehicle,
+    '👥 Passengers: '+passengers,
+    '🧳 Luggage: '+luggage,
+    discountCode?'🎟 Discount code: '+discountCode:'',
+    '',
+    'Please provide your best price and confirm availability.',
+    '',
+    'Thank you,',
+    '365 Transport and Tour Services'
+  ];
+  return lines.filter(Boolean).join(nl);
 }
 $('#homeQuoteWhatsApp')?.addEventListener('click',()=>{
   const message=buildHomeQuoteMessage();
-  if(message) window.open(whatsappUrl(ADMIN_WHATSAPP,message),'_blank','noopener');
+  if(!message)return;
+  const number=String(ADMIN_WHATSAPP||'').replace(/\\D/g,'');
+  if(!number){
+    alert('The quotation WhatsApp number is not configured. Please contact the administrator.');
+    return;
+  }
+  const url='https://wa.me/'+number+'?text='+encodeURIComponent(message);
+  const opened=window.open(url,'_blank');
+  if(!opened){
+    window.location.href=url;
+  }
 });
 
 setDateLimits();
