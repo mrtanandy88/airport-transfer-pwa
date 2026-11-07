@@ -780,7 +780,7 @@ function buildHomeQuoteMessage(){
 $('#homeQuoteWhatsApp')?.addEventListener('click',()=>{
   const message=buildHomeQuoteMessage();
   if(!message)return;
-  const number=String(ADMIN_WHATSAPP||'').replace(/\\D/g,'');
+  const number=String(ADMIN_WHATSAPP||'').replace(/\D/g,'');
   if(!number){
     alert('The quotation WhatsApp number is not configured. Please contact the administrator.');
     return;
